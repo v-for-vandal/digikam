@@ -17,33 +17,39 @@ Window {
 
         Keys.onRightPressed: {
             console.log("Right pressed");
-            photoStripesView.currentPhotoID = photoStripesView.nextPhotoInLevel();
+            photoStripesView.cursorObject.currentPhotoID = photoStripesView.cursorObject.nextPhotoInLevel();
             event.accepted = true;
         }
         Keys.onLeftPressed: {
             console.log("Left pressed");
-            photoStripesView.currentPhotoID = photoStripesView.previousPhotoInLevel();
+            photoStripesView.cursorObject.currentPhotoID = photoStripesView.cursorObject.previousPhotoInLevel();
             event.accepted = true;
         }
         Keys.onUpPressed: {
             console.log("Up pressed");
-            photoStripesView.currentPhotoID = photoStripesView.photoInLevelUpByPhotoID();
+            photoStripesView.cursorObject.currentPhotoID = photoStripesView.cursorObject.photoInLevelUpByPhotoID();
             event.accepted = true;
         }
         Keys.onDownPressed: {
             console.log("Down pressed");
-            photoStripesView.currentPhotoID = photoStripesView.photoInLevelDownByPhotoID();
+            photoStripesView.cursorObject.currentPhotoID = photoStripesView.cursorObject.photoInLevelDownByPhotoID();
             event.accepted = true;
         }
         Keys.onEnterPressed: {
             console.log("Enter pressed");
-            photoStripesView.expandStripe(photoStripesView.currentPhotoIndex.y);
+            photoStripesView.expandStripe(photoStripesView.cursorObject.currentPhotoIndex.y);
             event.accepted = true;
         }
         Keys.onEscapePressed: {
             console.log("Esc pressed");
-            photoStripesView.collapseStripe(photoStripesView.currentPhotoIndex.y);
+            photoStripesView.collapseStripe(photoStripesView.cursorObject.currentPhotoIndex.y);
             event.accepted = true;
+        }
+        Keys.onDigit8Pressed: {
+            photoStripesView.moveCurrentPhotoUpLevel(true);
+        }
+        Keys.onDigit2Pressed: {
+            photoStripesView.moveCurrentPhotoDownLevel(true);
         }
     }
 

@@ -5,7 +5,7 @@ Item {
     id: root
     objectName: "Delegate main"
     // User settings
-    property alias photoView : stripeView.photoView
+    property alias cursorObject : stripeView.cursorObject
     property alias stripeModel : stripeView.stripeModel
 
     NumberAnimation {
@@ -305,9 +305,6 @@ Item {
 
             DSM.State {
                 id: expanded
-
-
-
                 onEntered : {
                     console.log( "Stripe ", model.index, " entered expanded state" );
 

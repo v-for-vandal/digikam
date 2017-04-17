@@ -3,9 +3,9 @@ import QtQuick 2.0
 Item {
     // User settings
     property alias stripeModel: stripeView.model
-    property var photoView
+    property var cursorObject
     // Read-only properties
-    readonly property bool isCurrentLevel: photoView.currentLevel == stripeModel.level
+    readonly property bool isCurrentLevel: cursorObject.currentLevel === stripeModel.level
 
     Rectangle {
         anchors.fill: parent
@@ -17,7 +17,7 @@ Item {
             anchors.fill: parent
             orientation: Qt.Horizontal
             delegate: Rectangle {
-                readonly property var photoItem: photoView.sourcePhotoModel.get(
+                readonly property var photoItem: stripeModel.sourcePhotoModel.get(
                                                      model.photoID)
                 id: wrapper
                 width: photoItem.width
@@ -32,16 +32,23 @@ Item {
 
                 CurrentPhotoHighlight {
                     anchors.fill: parent
-                    visible: model.photoID == photoView.currentPhotoID
+                    visible: model.photoID === cursorObject.currentPhotoID
                 }
 
                 MouseArea {
                     anchors.fill: parent
                     onClicked: {
                         console.log( "Clicked on photo: ", model.photoID);
-                        photoView.currentPhotoID = model.photoID;
+                        cursorObject.currentPhotoID = model.photoID;
                     }
                 }
+            }
+
+            add : Transition {
+                NumberAnimation { properties: "x,y"; duration: 500 }
+            }
+            addDisplaced : Transition {
+                NumberAnimation { properties: "x,y"; duration: 500 }
             }
         }
     }

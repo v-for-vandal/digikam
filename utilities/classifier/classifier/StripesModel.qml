@@ -1,9 +1,12 @@
 import QtQuick 2.0
 
+import "algorithm.js" as Algorithm
+
 // Photos separated into layers
 // Item instead of QtObject because QtObject doesn't allow to declare other QtObjects inside self
 // Some error in Qml itself, complains on 'unexistent default property'
 Item {
+    id: thisObject
     parent: null // You won't draw it anyway
     visible: false
     enabled : false
@@ -24,37 +27,35 @@ Item {
     signal initializationStarted;
     signal initializationFinished;
 
-    // returns object containing stripe model and index in that model
-    // for photo with given id
-    function findByPhotoID(targetPhotoID) {
+    // Returns stripe object by stripe index. undefined for indices out of range
+    function getStripe( stripeIndex ) {
+        return d.stripesModels[stripeIndex];
+    }
+
+    // Current amount of stripes
+    function stripesCount() {
+        return d.stripesModels.length;
+    }
+
+    // Returns photo index of a photo with given ID. photo index is QPoint( index in stripe, stripe index)
+    // undefined if photo with such ID do not exist
+    function photoIndexByPhotoID(targetPhotoID) {
         if (targetPhotoID < 0
-                || targetPhotoID >= photoStripesView.sourcePhotoModel.count) {
+                || targetPhotoID >= stripesModels.sourcePhotoModel.count) {
             return undefined
         }
 
-        var photo = photoStripesView.sourcePhotoModel.get(targetPhotoID)
+        var photo = d.stripesModels.sourcePhotoModel.get(targetPhotoID)
         var level = photo.level
-        var stripeModel = d.stripesModelsByLevel[level]
-        var i = 0
-        for (; i < stripeModel.count; i++) {
-            var iPhoto = stripeModel.get(i)
-            var iPhotoId = iPhoto.photoID
-            if (iPhotoId == targetPhotoID) {
-                break
-            }
-        }
-        if (i >= stripeModel.count) {
-            console.error("Cant' find photo with photoID ", targetPhotoID,
-                          "in it's stripe")
-        }
-        return {
-            stripe: stripeModel,
-            index: i
-        }
+        var stripeIndex = findStripeIndexForLevel(level)
+        var photoIndexInStripe = findPhotoIndexInStripeByPhotoID(stripeIndex, targetPhotoID)
+
+        return Qt.point(photoIndexInStripe, stripeIndex)
     }
 
     // Returns index of a photo in a given stripe with PhotoID closest to the given one
-    function findNearestInStripeByPhotoID(targetPhotoID, stripeModel) {
+    function findNearestInStripeByPhotoID(targetPhotoID, stripeIndex) {
+        var stripeModel = getStripe(stripeIndex);
         // Searching for the photo with closed photoID
         console.assert(stripeModel != undefined)
         var closestPhotoIndex = 0
@@ -79,8 +80,11 @@ Item {
     // Returns index of a stripe in d.stripesModels for given level
     // Returns -1 on error
     function findStripeIndexForLevel(targetLevel) {
-        if (d.stripesModels.length == 0) {
+        if (d.stripesModels.length === 0) {
             return -1
+        }
+        if( targetLevel === -1) {
+            return -1;
         }
 
         // Assumption that all stripes are sequential and no stripe is missing
@@ -89,7 +93,7 @@ Item {
         var result = firstStripeLevel
                 - targetLevel // Because sequential and without missing stripes.
         // But let's check anyway
-        console.assert(d.stripesModels[result].level == targetLevel,
+        console.assert(d.stripesModels[result].level === targetLevel,
                        "d.stripesModels is not sequential!")
         return result
     }
@@ -99,18 +103,68 @@ Item {
         console.log("Searching photo with ID ", targetPhotoID,
                     " in stripe on index ", stripeIndex)
         if (stripeIndex < 0 || stripeIndex >= d.stripesModels.length) {
-            console.log("Stripe is empty")
+            console.log("Stripe index is out of range")
             return -1
         }
         var stripe = d.stripesModels[stripeIndex]
         var result = Algorithm.binarySearch(stripe, targetPhotoID,
-                                            photoIDStripeAccessor, 0,
+                                            d.photoIDStripeAccessor, 0,
                                             stripe.count)
         return result
     }
 
-    QtObject {
-        id: wtf
+    // Move photo on given index to given level. index is QPoint(index in stripe, stripe index)
+    //  See photoIndexByPhotoID function
+    function movePhotoByIndexToLevel( photoIndex, newLevel ) {
+        if( newLevel < 0 ) {
+            return;
+        }
+
+        var stripeIndex = photoIndex.y
+        var stripe = getStripe(stripeIndex);
+        if( stripe === undefined ) {
+            // stripe index out of range
+            return;
+        }
+
+        // If newLevel is equal to current level, then do nothing
+        if( stripe.level === newLevel ) {
+            return;
+        }
+
+        var photoIndexInStripe = photoIndex.x
+        if( photoIndexInStripe < 0 || photoIndexInStripe >= stripe.count) {
+            // photo index in stripe is out of range
+            return;
+        }
+
+        var photoID = stripe.get(photoIndexInStripe).photoID;
+
+        var targetStripeIndex = findStripeIndexForLevel(newLevel)
+        if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
+            return;
+        }
+
+        var targetStripe = getStripe(targetStripeIndex);
+        var insertionPosition = Algorithm.binarySearch( targetStripe, photoID, d.photoIDStripeAccessor, 0, targetStripe.count );
+        // insertionPosition must be negative. Positive one means that photo is already in the stripe
+        if( insertionPosition >= 0) {
+            console.error( "Photo is already in target stripe");
+            return;
+        }
+
+        insertionPosition = -(insertionPosition+1);
+        // Removing from current stripe
+        stripe.remove( photoIndexInStripe, 1);
+        // Adding to new Positioner
+        var photo = {
+            'photoID' : photoID
+        }
+
+        targetStripe.insert(insertionPosition, photo);
+
+        // Changing level in source photo
+        sourcePhotoModel.get(photoID).level = newLevel
     }
 
     WorkerScript {
@@ -145,7 +199,7 @@ Item {
 
             if( messageObject.status == 'started') {
                 console.log( "Initialization started");
-                d.initializationStarted();
+                thisObject.initializationStarted();
             } else if( messageObject.status == 'finished' ) {
                 var sourceStripesModels = requestData[requestId]
                 console.assert(sourceStripesModels != undefined, 'Somehow input for request was lost. RequestId is', requestId);
@@ -156,6 +210,7 @@ Item {
                     console.log( "Model index in source array ", sourceIndex)
                     var sourceModel = sourceStripesModels[sourceIndex];
                     sourceModel.level = messageObject.levels[sourceIndex];
+                    sourceModel.sourcePhotoModel = sourcePhotoModel
                     console.log( "Stripe. Level ", sourceModel.level, " Photos count: ", sourceModel.count);
 
                     d.stripesModels.push( sourceModel );
@@ -166,7 +221,7 @@ Item {
                 console.log( "Stripes models map: ", d.stripesModelsByLevel)
                 requestData[messageObject.requestId] = undefined
                 console.log( "Initialization finished");
-                d.initializationFinished();
+                thisObject.initializationFinished();
             } else if( messageObject.status == 'error') {
                 d.initializationError = messageObject.errorMsg;
                 requestData[messageObject.requestId] = undefined
@@ -179,15 +234,15 @@ Item {
     }
 
     onSourcePhotoModelChanged: {
-        console.log( "Component status: ", d.componentCompleted)
-        console.log( "New model is ", sourcePhotoModel);
+        //console.log( "Component status: ", d.componentCompleted)
+        //console.log( "New model is ", sourcePhotoModel);
         if( d.componentCompleted ) {
             d.initializeAsync();
         }
     }
 
     Component.onCompleted: {
-        console.log( "Component finished initialization")
+        //console.log( "Component finished initialization")
         d.componentCompleted = true;
         d.initializeAsync();
     }
@@ -208,7 +263,7 @@ Item {
 
         function photoIDStripeAccessor(stripeModel, index) {
             var item = stripeModel.get(index)
-            if (item == undefined) {
+            if (item === undefined) {
                 return undefined
             }
             return item.photoID
@@ -222,7 +277,7 @@ Item {
             // Create as much stripe models as we need
             var sourceStripeModels = []
             // Model could be undefined
-            if( sourcePhotoModel != undefined ) {
+            if( sourcePhotoModel !== undefined ) {
                 for( var i = 0; i < sourcePhotoModel.numberOfLevels; i++ ) {
                     var levelModel = Qt.createQmlObject(
                                 "import QtQuick 2.0; PhotoStripeModel {}",

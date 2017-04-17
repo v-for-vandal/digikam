@@ -2,7 +2,10 @@ import QtQuick 2.0
 import QtQml.Models 2.2
 
 ListModel {
+    // Level of this stripe
     property int level
+    // Original model with photos
+    property var sourcePhotoModel
 }
 
 /* TODO: Discard

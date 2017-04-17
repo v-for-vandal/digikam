@@ -6,19 +6,24 @@ import QtQuick 2.0
 QtObject {
     // ==  User settings: ==
     // StripesModel object
-    property var stripesModel : null
+    property var stripesModel
 
     // == Operational properties ==
 
     // PhotoID of current photo. -1 if there is no current photo. Could be set by user
     property int currentPhotoID : -1
-    readonly property var currentPhoto: currentPhotoID > 0 ? sourcePhotoModel.get(currentPhotoID) : null
-    readonly property int currentLevel: currentPhoto != null ? currentPhoto.level : -1
+    // See comment to d.forceUpdater and forceUpdate() method why it is needed
+    readonly property var currentPhoto: forceUpdater, currentPhotoID > 0 ? stripesModel.sourcePhotoModel.get(currentPhotoID) : undefined
+    readonly property int currentLevel: currentPhoto !== undefined ? currentPhoto.level : -1
     // 2d coordinates of the current photo. y attribute is stripe index, x attribute is photo index in stripe
     readonly property point currentPhotoIndex: {
-        var stripeIndex = stripeModel.findStripeIndexForLevel(currentLevel)
-        var photoIndex = stripeModel.findPhotoIndexInStripeByPhotoID(
-                    stripeIndex, photoStripesView.currentPhotoID)
+        if( currentPhotoID === -1) {
+            return Qt.point(-1,-1);
+        }
+
+        var stripeIndex = stripesModel.findStripeIndexForLevel(currentLevel)
+        var photoIndex = stripesModel.findPhotoIndexInStripeByPhotoID(
+                    stripeIndex, currentPhotoID)
         return Qt.point(photoIndex, stripeIndex)
     }
 
@@ -28,7 +33,7 @@ QtObject {
             return -1;
         }
 
-        var stripeModel = stripesModels[currentPhotoIndex.y]
+        var stripeModel = stripesModel.getStripe(currentPhotoIndex.y)
         var index = currentPhotoIndex.x
 
         // If there is next photo in this stripe
@@ -42,7 +47,7 @@ QtObject {
 
     // Returns id of the previous photo in current level
     function previousPhotoInLevel() {
-        var stripeModel = d.stripesModels[currentPhotoIndex.y]
+        var stripeModel = stripesModel.getStripe(currentPhotoIndex.y)
         var index = currentPhotoIndex.x
 
         // If there is next photo in this stripe
@@ -54,32 +59,53 @@ QtObject {
         }
     }
 
+    // Returns id of the photo in current stripe where cursor should be placed if current photo was removed from this stripe
+    // If there is photo after current in stripe, then it will be selected
+    // If there isn't, then previous in stripe will be selected
+    // If there aren't previous and next, then -1 will be returned
+    function findPreservationPhotoIDInLevel() {
+        if( currentPhotoID === -1) {
+            return -1;
+        }
+
+        var newCursorPhotoID = nextPhotoInLevel();
+        if( newCursorPhotoID === currentPhotoID) {
+            newCursorPhotoID = previousPhotoInLevel();
+        }
+        if( newCursorPhotoID === currentPhotoID) {
+            return -1;
+        }
+
+        return newCursorPhotoID;
+    }
+
     // Returns PhotoID of the 'next' photo in the level below current with closest photoID
     // that resides in one level above
     // If level below current exists, but is empty, then search upwards for the first non-empty level
     function photoInLevelDownByPhotoID() {
         // Checking if there is any level above that
         var levelIndex = currentPhotoIndex.y
-        if (levelIndex >= d.stripesModels.length) {
+        if (levelIndex >= stripesModel.stripesCount()) {
             console.error("Can't find model for current level")
             return currentPhotoID
         }
         // Searching for next populated levelIndex
-        var nextPopulatedLevel = levelIndex + 1 // +1 because d.stripesModels is inversed
-        for (; nextPopulatedLevel < d.stripesModels.length; nextPopulatedLevel++) {
-            if (d.stripesModels[nextPopulatedLevel].count > 0) {
+        var nextPopulatedLevelIndex = levelIndex + 1 // +1 because d.stripesModels is inversed
+        var count = stripesModel.stripesCount();
+        for (; nextPopulatedLevelIndex < count; nextPopulatedLevelIndex++) {
+            if (stripesModel.getStripe(nextPopulatedLevelIndex).count > 0) {
                 break
             }
         }
 
-        if (nextPopulatedLevel >= d.stripesModels.length) {
+        if (nextPopulatedLevelIndex >= count) {
             // Well, there is no level above that one.
             return currentPhotoID
         }
 
-        var nextLevelModel = d.stripesModels[nextPopulatedLevel]
-        var closestPhotoIndex = d.findNearestInStripeByPhotoID(currentPhotoID,
-                                                               nextLevelModel)
+        var nextLevelModel = stripesModel.getStripe(nextPopulatedLevelIndex)
+        var closestPhotoIndex = stripesModel.findNearestInStripeByPhotoID(currentPhotoID,
+                                                               nextPopulatedLevelIndex)
 
         return nextLevelModel.get(closestPhotoIndex).photoID
     }
@@ -90,32 +116,48 @@ QtObject {
     function photoInLevelUpByPhotoID() {
         // Checking if there is any level above that
         var levelIndex = currentPhotoIndex.y
-        if (levelIndex >= d.stripesModels.length) {
+        if (levelIndex >= stripesModel.stripesCount()) {
             console.error("Can't find model for current level")
             return currentPhotoID
         }
         // Searching for next populated levelIndex
-        var nextPopulatedLevel = levelIndex - 1 // -1 because d.stripesModels is inverted
-        for (; nextPopulatedLevel >= 0; nextPopulatedLevel--) {
-            if (d.stripesModels[nextPopulatedLevel].count > 0) {
+        var nextPopulatedLevelIndex = levelIndex - 1 // -1 because d.stripesModels is inverted
+        for (; nextPopulatedLevelIndex >= 0; nextPopulatedLevelIndex--) {
+            if (stripesModel.getStripe(nextPopulatedLevelIndex).count > 0) {
                 break
             }
         }
 
-        if (nextPopulatedLevel < 0) {
+        if (nextPopulatedLevelIndex < 0) {
             // Well, there is no level below that one.
             return currentPhotoID
         }
 
-        var nextLevelModel = d.stripesModels[nextPopulatedLevel]
-        var closestPhotoIndex = d.findNearestInStripeByPhotoID(currentPhotoID,
-                                                               nextLevelModel)
+        var nextLevelModel = stripesModel.getStripe(nextPopulatedLevelIndex)
+        var closestPhotoIndex = stripesModel.findNearestInStripeByPhotoID(currentPhotoID,
+                                                               nextPopulatedLevelIndex)
 
         return nextLevelModel.get(closestPhotoIndex).photoID
+    }
+
+    // When data inside source photo model changes, cursor must be updated. ListModel has no 'changed' signal,
+    // so it must be done manually
+    function forceUpdate() {
+        forceUpdater = (forceUpdater + 1) % 2
     }
 
     onCurrentLevelChanged: {
         console.log("Current level is now: ", currentLevel)
     }
+
+    onStripesModelChanged: {
+        console.log("New stripes model is: ", stripesModel)
+    }
+
+
+    // Property is used to trick QML into updating some bindings when data in model (not model itself, but data inside it)
+    // is changed.
+    property int forceUpdater : 0;
+
 
 }

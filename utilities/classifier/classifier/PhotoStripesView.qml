@@ -1,8 +1,6 @@
 import QtQuick 2.0
 import QtQml.StateMachine 1.0 as DSM
 
-import "algorithm.js" as Algorithm
-
 Item {
     id: photoStripesView
     // User properties
@@ -99,6 +97,49 @@ Item {
         stripe.collapse()
     }
 
+    function moveCurrentPhotoUpLevel( preserveCursorInLine ) {
+        var newCursorPhotoID = undefined
+        if( preserveCursorInLine ) {
+            newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
+        }
+
+        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1);
+        // updating cursor
+        cursor.forceUpdate()
+        // Changing position
+        if( newCursorPhotoID !== undefined) {
+            cursor.currentPhotoID = newCursorPhotoID;
+        }
+    }
+    function moveCurrentPhotoDownLevel( preserveCursorInLine ) {
+        var newCursorPhotoID = undefined
+        if( preserveCursorInLine ) {
+            newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
+        }
+
+        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1);
+        // updating cursor
+        cursor.forceUpdate()
+
+        // Changing position
+        if( newCursorPhotoID !== undfined) {
+            cursor.currentPhotoID = newCursorPhotoID;
+        }
+    }
+
+    Component.onCompleted: {
+        console.log("Self? :", photoStripesView)
+        console.log( "Cursor object: ", cursor)
+        console.log("StripesModel object: ", stripesModel)
+
+        cursor.stripesModel = stripesModel
+    }
+
+    // Stripes model
+    StripesModel {
+        id: stripesModel
+    }
+
     Cursor {
         id: cursor
         stripesModel: photoStripesView.stripesModel // Because name clash
@@ -109,7 +150,7 @@ Item {
         anchors.fill: parent
         objectName: "ViewArea" // For debug purposes
 
-        // We use Flickable + Column instead of ListView because there won't be many stripes
+        // We use Flickable + Column + Repeater instead of ListView because there won't be many stripes
         // and unlike ListView which may destroy delegates out of view, all stripes in Column will
         // always exist.
         Flickable {
@@ -126,35 +167,38 @@ Item {
                     delegate: PhotoStripeViewDelegate {
                         width: mainView.width
                         height: Math.floor( photoStripesView.height/ photoStripesView.stripesVisible)
-                        photoView: photoStripesView
+                        cursorObject: cursor
                         stripeModel: stripesRepeater.model[index]
                     }
                 }
             }
 
-            NumberAnimation {
-                id: visibilityScrollingAnimation
-                target: mainView
-                property: "contentY"
-                duration: 500
-                easing.type: Easing.InOutQuad
+
+        }
+    }
+
+    NumberAnimation {
+        id: visibilityScrollingAnimation
+        target: mainView
+        property: "contentY"
+        duration: 500
+        easing.type: Easing.InOutQuad
+    }
+
+    Connections {
+        target: cursor
+
+        onCurrentPhotoIndexChanged: {
+            // Search mainView for stipe with this level
+            var currentPhotoIndex = cursor.currentPhotoIndex;
+            var stripeIndex = currentPhotoIndex.y
+            if (stripeIndex >= 0) {
+                ensureStripeVisibility(stripeIndex)
             }
-
-            Connections {
-                target: photoStripesView
-
-                onCurrentPhotoIndexChanged: {
-                    // Search mainView for stipe with this level
-                    var stripeIndex = currentPhotoIndex.y
-                    if (stripeIndex >= 0) {
-                        ensureStripeVisibility(stripeIndex)
-                    }
-                    var photoIndex = currentPhotoIndex.x
-                    if (photoIndex >= 0
-                            && photoIndex < d.stripesModels[stripeIndex].count) {
-                        ensurePhotoVisibility( stripeIndex, photoIndex);
-                    }
-                }
+            var photoIndex = currentPhotoIndex.x
+            if (photoIndex >= 0
+                    && photoIndex < stripesModel.getStripe(stripeIndex).count) {
+                ensurePhotoVisibility( stripeIndex, photoIndex);
             }
         }
     }
@@ -253,11 +297,6 @@ Item {
 
         photoStripesView.state = "running"
     }*/
-
-    // Stripes model
-    StripesModel {
-        id: stripesModel
-    }
 
     // All private properties
     QtObject {
