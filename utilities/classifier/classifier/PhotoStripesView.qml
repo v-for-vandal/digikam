@@ -143,6 +143,7 @@ Item {
     Cursor {
         id: cursor
         stripesModel: photoStripesView.stripesModel // Because name clash
+        highlight: CurrentPhotoHighlight {}
     }
 
     Item {

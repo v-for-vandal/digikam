@@ -3,7 +3,8 @@ import QtQuick 2.0
 // Cursor is responsible for maintaining:
 // 1. Current photo and operations for moving across all PhotoStripeModel
 // 2. (Multiple)selection. Independent from current photo
-QtObject {
+Item {
+    id: cursor
     // ==  User settings: ==
     // StripesModel object
     property var stripesModel
@@ -13,7 +14,7 @@ QtObject {
     // PhotoID of current photo. -1 if there is no current photo. Could be set by user
     property int currentPhotoID : -1
     // See comment to d.forceUpdater and forceUpdate() method why it is needed
-    readonly property var currentPhoto: forceUpdater, currentPhotoID > 0 ? stripesModel.sourcePhotoModel.get(currentPhotoID) : undefined
+    readonly property var currentPhoto: d.forceUpdater, currentPhotoID > 0 ? stripesModel.sourcePhotoModel.get(currentPhotoID) : undefined
     readonly property int currentLevel: currentPhoto !== undefined ? currentPhoto.level : -1
     // 2d coordinates of the current photo. y attribute is stripe index, x attribute is photo index in stripe
     readonly property point currentPhotoIndex: {
@@ -26,6 +27,12 @@ QtObject {
                     stripeIndex, currentPhotoID)
         return Qt.point(photoIndex, stripeIndex)
     }
+
+    // Component to use as highlight
+    property Component highlight
+
+    // Highlight item. Auto-generated from highlight component
+    readonly property alias highlightItem : d.highlightItem
 
     // Returns id of the next photo in current level. You can assign it to currentPhotoId
     function nextPhotoInLevel() {
@@ -143,7 +150,7 @@ QtObject {
     // When data inside source photo model changes, cursor must be updated. ListModel has no 'changed' signal,
     // so it must be done manually
     function forceUpdate() {
-        forceUpdater = (forceUpdater + 1) % 2
+        forceUpdater = (d.forceUpdater + 1) % 2
     }
 
     onCurrentLevelChanged: {
@@ -154,10 +161,33 @@ QtObject {
         console.log("New stripes model is: ", stripesModel)
     }
 
+    QtObject {
+        id: d
 
-    // Property is used to trick QML into updating some bindings when data in model (not model itself, but data inside it)
-    // is changed.
-    property int forceUpdater : 0;
+        // Property is used to trick QML into updating some bindings when data in model (not model itself, but data inside it)
+        // is changed.
+        property int forceUpdater : 0;
 
+        // Current highlight item. It visual parent may change,
+        // but it's QObject parent is always cursor
+        property Item highlightItem
+    }
 
+    Component.onCompleted: {
+        // Cursor itself is not drawable
+        parent = null
+    }
+
+    onHighlightChanged: {
+        // Safely erase previous highlight item
+        if( d.highlightItem !== null && d.highlightItem !== undefined ) {
+            d.highlightItem.parent = null
+            d.highlightItem = 0;
+        }
+        if( highlight !== undefined && highlight !== null) {
+            var newHighlight = highlight.createObject(cursor)
+            newHighlight.parent = null
+            d.highlightItem = newHighlight
+        }
+    }
 }
