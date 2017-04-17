@@ -8,6 +8,8 @@ Item {
     // ==  User settings: ==
     // StripesModel object
     property var stripesModel
+    // Lock in horizontal movement (in stripe) only
+    property bool lockInStripe : false
 
     // == Operational properties ==
 
@@ -90,6 +92,10 @@ Item {
     // that resides in one level above
     // If level below current exists, but is empty, then search upwards for the first non-empty level
     function photoInLevelDownByPhotoID() {
+        if( lockInStripe ) {
+            return;
+        }
+
         // Checking if there is any level above that
         var levelIndex = currentPhotoIndex.y
         if (levelIndex >= stripesModel.stripesCount()) {
@@ -121,6 +127,10 @@ Item {
     // that resides in one level above
     // If level above current exists, but is empty, then search upwards for the first non-empty level
     function photoInLevelUpByPhotoID() {
+        if( lockInStripe ) {
+            return;
+        }
+
         // Checking if there is any level above that
         var levelIndex = currentPhotoIndex.y
         if (levelIndex >= stripesModel.stripesCount()) {
@@ -150,7 +160,7 @@ Item {
     // When data inside source photo model changes, cursor must be updated. ListModel has no 'changed' signal,
     // so it must be done manually
     function forceUpdate() {
-        forceUpdater = (d.forceUpdater + 1) % 2
+        d.forceUpdater = (d.forceUpdater + 1) % 2
     }
 
     onCurrentLevelChanged: {

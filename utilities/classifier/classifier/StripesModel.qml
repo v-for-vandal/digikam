@@ -7,7 +7,7 @@ import "algorithm.js" as Algorithm
 // Some error in Qml itself, complains on 'unexistent default property'
 Item {
     id: thisObject
-    parent: null // You won't draw it anyway
+    parent: null // We won't draw it anyway
     visible: false
     enabled : false
 
@@ -167,6 +167,21 @@ Item {
         sourcePhotoModel.get(photoID).level = newLevel
     }
 
+    // Adds empty stripe 'above'
+    function addNewStripe() {
+        var newStripe = d.createStripeModel();
+        newStripe.sourcePhotoModel = sourcePhotoModel;
+        if( d.stripesModels.lengt > 0) {
+            // Array is inverted!
+            newStripe.level = d.stripesModels[0].level
+        } else {
+            newStripe.level = 0;
+        }
+
+        d.stripesModels.insert( 0, newStripe );
+        d.stripesModelsByLevel[newStripe.level] = newStripe;
+    }
+
     WorkerScript {
         id: initializationWorker
         source: "workers/photoStripesViewInitializer.js"
@@ -269,6 +284,12 @@ Item {
             return item.photoID
         }
 
+        function createStripeModel() {
+           return Qt.createQmlObject(
+                                            "import QtQuick 2.0; PhotoStripeModel {}",
+                                            photoStripesView, "levelModel") // TODO: Use null as a parent ?
+        }
+
         function initializeAsync() {
             console.log( "Asynchronious initialization");
             // Clear current results
@@ -279,9 +300,7 @@ Item {
             // Model could be undefined
             if( sourcePhotoModel !== undefined ) {
                 for( var i = 0; i < sourcePhotoModel.numberOfLevels; i++ ) {
-                    var levelModel = Qt.createQmlObject(
-                                "import QtQuick 2.0; PhotoStripeModel {}",
-                                photoStripesView, "levelModel")
+                    var levelModel = createStripeModel();
                     sourceStripeModels.push(levelModel)
                 }
             }

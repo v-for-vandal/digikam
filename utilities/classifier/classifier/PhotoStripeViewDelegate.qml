@@ -248,6 +248,14 @@ Item {
                     height : 0
                 }
             }
+            State {
+                name: "empty" // Stripe has now photo
+                PropertyChanges {
+                    target: bottomMargin
+                    height : d.expandedMarginHeight
+                }
+            }
+
         ]
         /*
         transitions: [
