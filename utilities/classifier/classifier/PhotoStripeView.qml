@@ -3,7 +3,8 @@ import QtQuick 2.0
 Item {
     // User settings
     property alias stripeModel: stripeView.model
-    property var cursorObject
+    property var cursorObject // TODO: make property Cursor instead of property var
+    property VisualControl visualControlObject
     // Read-only properties
     readonly property bool isCurrentLevel: cursorObject.currentLevel === stripeModel.level
 
@@ -16,6 +17,7 @@ Item {
             id: stripeView
             anchors.fill: parent
             orientation: Qt.Horizontal
+            cacheBuffer: 0
             delegate: Rectangle {
                 // Caution - this property won't be updated if data inside(!) model changed.
                 // Do not query photoItem for user-changable properties, such as 'level'
@@ -26,19 +28,21 @@ Item {
                 height: ListView.view.height
                 border.color: photoItem.color
                 border.width: 5
-                opacity: 0.7
-                Text {
+                //opacity: 0.7
+                /*
+                RawPhotoView {
                     anchors.centerIn: parent
-                    text: "Photo ID: " + model.photoID
-                }
-
-                /* CurrentPhotoHighlight { // TODO: REMOVE
-                    anchors.fill: parent
-                    visible: model.photoID === cursorObject.currentPhotoID
+                    photoID: model.photoID
                 }*/
+                Item {
+                    anchors.fill: parent
+                    id: photoPlaceHolder
+                }
 
                 MouseArea {
                     anchors.fill: parent
+                    drag.target: wrapper
+                    drag.axis: Drag.YAxis
                     onClicked: {
                         console.log( "Clicked on photo: ", model.photoID);
                         cursorObject.currentPhotoID = model.photoID;
@@ -54,7 +58,14 @@ Item {
                 }
 
                 Component.onCompleted: {
+                    // Load photo onto self
+                    d.loadPhoto();
                     d.updateHighlight(cursorObject);
+                    //console.log( "Photo delegate is created: ", model.photoID)
+                }
+
+                Component.onDestruction: {
+                    //console.log( "Photo delegate is destroyed: ", model.photoID);
                 }
 
                 QtObject {
@@ -113,11 +124,31 @@ Item {
                             removeCurrentHighlight();
                         }
                     }
+
+                    function loadPhoto() {
+                        var id = model.photoID
+                        if( id === undefined ) {
+                            throw false
+                        }
+                        if( visualControlObject === null || visualControlObject === undefined ) {
+                            console.error("Visual control object is not present");
+                            return;
+                        }
+
+                        var photo = visualControlObject.requestPhoto(id);
+                        // For now - just plain reparenting, without animation
+                        if( photo !== undefined && photo !== null ) {
+                            photo.parent = photoPlaceHolder
+                            photo.anchors.centerIn = photoPlaceHolder
+                        } else {
+                            console.error( "VisualControl failed to give us requested photo")
+                        }
+                    }
                 }
             }
 
             add : Transition {
-                NumberAnimation { properties: "x,y"; duration: 500 }
+                NumberAnimation { properties: "x,y"; duration: 500; from: 200 }
             }
             addDisplaced : Transition {
                 NumberAnimation { properties: "x,y"; duration: 500 }

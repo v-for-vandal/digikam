@@ -7,6 +7,7 @@ Item {
     // User settings
     property alias cursorObject : stripeView.cursorObject
     property alias stripeModel : stripeView.stripeModel
+    property alias visualControlObject : stripeView.visualControlObject
 
     NumberAnimation {
         id: heightAnimation

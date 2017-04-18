@@ -5,7 +5,7 @@ Item {
     id: photoStripesView
     // User properties
     property int stripesVisible: 3
-    property alias sourcePhotoModel : stripesModel.sourcePhotoModel
+    property alias sourcePhotoModel : stripesModelObject.sourcePhotoModel
 
     // Main view area. Mostly used internally
     readonly property Item viewAreaItem : viewArea
@@ -134,20 +134,27 @@ Item {
     Component.onCompleted: {
         console.log("Self? :", photoStripesView)
         console.log( "Cursor object: ", cursor)
-        console.log("StripesModel object: ", stripesModel)
+        console.log("StripesModel object: ", stripesModelObject)
 
-        cursor.stripesModel = stripesModel
+        cursor.stripesModel = stripesModelObject // Why do we need this ?
     }
 
     // Stripes model
     StripesModel {
-        id: stripesModel
+        id: stripesModelObject
     }
 
     Cursor {
         id: cursor
         stripesModel: photoStripesView.stripesModel // Because name clash
         highlight: CurrentPhotoHighlight {}
+    }
+
+    VisualControl {
+        id: visualControl
+        parent: null // No need to draw it
+        stripeViews: photoStripesView
+        stripesModel: stripesModelObject
     }
 
     Item {
@@ -166,14 +173,16 @@ Item {
             contentHeight: contentItem.childrenRect.height
             Column {
                 id: columnPositioner
+                spacing: 30
                 Repeater {
                     id: stripesRepeater;
-                    model: stripesModel.stripesModels
+                    model: stripesModelObject.stripesModels
 
                     delegate: PhotoStripeViewDelegate {
                         width: mainView.width
                         height: Math.floor( photoStripesView.height/ photoStripesView.stripesVisible)
                         cursorObject: cursor
+                        visualControlObject: visualControl
                         stripeModel: stripe // 'stripe' is the name of the role. This is delegate and thus it has direct access to roles of it's element
                     }
                 }
@@ -203,7 +212,7 @@ Item {
             }
             var photoIndex = currentPhotoIndex.x
             if (photoIndex >= 0
-                    && photoIndex < stripesModel.getStripe(stripeIndex).count) {
+                    && photoIndex < stripesModelObject.getStripe(stripeIndex).count) {
                 ensurePhotoVisibility( stripeIndex, photoIndex);
             }
         }
@@ -223,7 +232,7 @@ Item {
 
             DSM.SignalTransition {
                 targetState: sRunning
-                signal: stripesModel.initializationFinished
+                signal: stripesModelObject.initializationFinished
             }
         }
 
@@ -232,12 +241,12 @@ Item {
             onEntered : {
                 console.log( "Running main view")
                 mainView.visible = true
-                stripesRepeater.model = stripesModel.stripesModels
+                stripesRepeater.model = stripesModelObject.stripesModels
             }
 
             DSM.SignalTransition {
                 targetState: sInit
-                signal: stripesModel.initializationStarted
+                signal: stripesModelObject.initializationStarted
             }
         }
     }
