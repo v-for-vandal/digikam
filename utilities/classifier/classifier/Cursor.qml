@@ -16,7 +16,7 @@ Item {
     // PhotoID of current photo. -1 if there is no current photo. Could be set by user
     property int currentPhotoID : -1
     // See comment to d.forceUpdater and forceUpdate() method why it is needed
-    readonly property var currentPhoto: d.forceUpdater, currentPhotoID > 0 ? stripesModel.sourcePhotoModel.get(currentPhotoID) : undefined
+    readonly property var currentPhoto: d.forceUpdater, currentPhotoID >= 0 ? stripesModel.sourcePhotoModel.get(currentPhotoID) : undefined
     readonly property int currentLevel: currentPhoto !== undefined ? currentPhoto.level : -1
     // 2d coordinates of the current photo. y attribute is stripe index, x attribute is photo index in stripe
     readonly property point currentPhotoIndex: {
@@ -27,6 +27,7 @@ Item {
         var stripeIndex = stripesModel.findStripeIndexForLevel(currentLevel)
         var photoIndex = stripesModel.findPhotoIndexInStripeByPhotoID(
                     stripeIndex, currentPhotoID)
+
         return Qt.point(photoIndex, stripeIndex)
     }
 

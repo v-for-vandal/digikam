@@ -72,7 +72,7 @@ Item {
                         // If current highlight item is cursor's current highlight item,
                         // do nothing
                         if( highlightItem === cursor.highlightItem ) {
-                            console.log("already highlighted");
+                            //console.log("already highlighted");
                             return;
                         }
 
@@ -81,7 +81,7 @@ Item {
                         removeCurrentHighlight();
 
                         // Now move cursor's highlight item onto self
-                        console.log("Current highlight item: ", cursor.highlightItem)
+                        //console.log("Current highlight item: ", cursor.highlightItem)
                         highlightItem = cursor.highlightItem // could be null
                         if( highlightItem !== null ) {
                             highlightItem.parent = wrapper
@@ -105,7 +105,7 @@ Item {
                     }
 
                     function updateHighlight(cursor) {
-                        console.log( "Updating highlight on delegate for photo: ", model.photoID)
+                        //console.log( "Updating highlight on delegate for photo: ", model.photoID)
                         // If we are highlighted:
                         if( cursorObject.currentPhotoID === model.photoID) {
                             d.highlightSelf(cursorObject);

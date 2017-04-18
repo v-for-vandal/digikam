@@ -97,16 +97,18 @@ Item {
         stripe.collapse()
     }
 
+    // TODO: Move those function to separate object VisualControl
     function moveCurrentPhotoUpLevel( preserveCursorInLine ) {
         var newCursorPhotoID = undefined
         if( preserveCursorInLine ) {
             newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
         }
 
-        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1);
+        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1, true);
         // updating cursor
         cursor.forceUpdate()
         // Changing position
+        // TODO: If moving failed, don't update cursor!
         if( newCursorPhotoID !== undefined) {
             cursor.currentPhotoID = newCursorPhotoID;
         }
@@ -117,15 +119,17 @@ Item {
             newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
         }
 
-        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1);
+        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1, true);
         // updating cursor
         cursor.forceUpdate()
 
         // Changing position
-        if( newCursorPhotoID !== undfined) {
+        // TODO: If moving failed, don't update cursor!
+        if( newCursorPhotoID !== undefined) {
             cursor.currentPhotoID = newCursorPhotoID;
         }
     }
+    // End of VisualControl
 
     Component.onCompleted: {
         console.log("Self? :", photoStripesView)
@@ -164,12 +168,13 @@ Item {
                 id: columnPositioner
                 Repeater {
                     id: stripesRepeater;
-                    model: d.stripesModels
+                    model: stripesModel.stripesModels
+
                     delegate: PhotoStripeViewDelegate {
                         width: mainView.width
                         height: Math.floor( photoStripesView.height/ photoStripesView.stripesVisible)
                         cursorObject: cursor
-                        stripeModel: stripesRepeater.model[index]
+                        stripeModel: stripe // 'stripe' is the name of the role. This is delegate and thus it has direct access to roles of it's element
                     }
                 }
             }

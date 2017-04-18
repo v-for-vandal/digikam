@@ -13,6 +13,8 @@ Item {
 
     // Input property - photo source model
     property var sourcePhotoModel
+    // Input property - maximum number of levels
+    property int maximumAllowedLevel : 100 // TODO: Handle this limitation in WorkerScript
 
     // Generated properties
     // Holds array of all stripe models. In reverse order - because, for some unbelievable
@@ -29,12 +31,16 @@ Item {
 
     // Returns stripe object by stripe index. undefined for indices out of range
     function getStripe( stripeIndex ) {
-        return d.stripesModels[stripeIndex];
+        var proxy = d.stripesModels.get(stripeIndex);
+        if( proxy === undefined ) {
+            return undefined;
+        }
+        return proxy.stripe;
     }
 
     // Current amount of stripes
     function stripesCount() {
-        return d.stripesModels.length;
+        return d.stripesModels.count;
     }
 
     // Returns photo index of a photo with given ID. photo index is QPoint( index in stripe, stripe index)
@@ -80,7 +86,7 @@ Item {
     // Returns index of a stripe in d.stripesModels for given level
     // Returns -1 on error
     function findStripeIndexForLevel(targetLevel) {
-        if (d.stripesModels.length === 0) {
+        if (d.stripesModels.count === 0) {
             return -1
         }
         if( targetLevel === -1) {
@@ -89,12 +95,21 @@ Item {
 
         // Assumption that all stripes are sequential and no stripe is missing
         // And stipesModels is also reversed
-        var firstStripeLevel = d.stripesModels[0].level
+        var firstStripeLevel = getStripe(0).level
+
+        console.log( "Looking targetLevel: ", targetLevel, " Total stripes count: ", d.stripesModels.count, " firstStripeLevel: ", firstStripeLevel);
+
         var result = firstStripeLevel
                 - targetLevel // Because sequential and without missing stripes.
+
+        if( result < 0 || result >= d.stripesModels.count) {
+            // No stripe for this level, level is out of range
+            return -1;
+        }
+
         // But let's check anyway
-        console.assert(d.stripesModels[result].level === targetLevel,
-                       "d.stripesModels is not sequential!")
+        console.assert(getStripe(result).level === targetLevel,
+                       "d.stripesModels is not sequential! Stripe for level ", targetLevel, "at index ", result, " has level property set to: ", getStripe(result).level)
         return result
     }
 
@@ -102,11 +117,11 @@ Item {
     function findPhotoIndexInStripeByPhotoID(stripeIndex, targetPhotoID) {
         console.log("Searching photo with ID ", targetPhotoID,
                     " in stripe on index ", stripeIndex)
-        if (stripeIndex < 0 || stripeIndex >= d.stripesModels.length) {
+        if (stripeIndex < 0 || stripeIndex >= d.stripesModels.count) {
             console.log("Stripe index is out of range")
             return -1
         }
-        var stripe = d.stripesModels[stripeIndex]
+        var stripe = getStripe(stripeIndex)
         var result = Algorithm.binarySearch(stripe, targetPhotoID,
                                             d.photoIDStripeAccessor, 0,
                                             stripe.count)
@@ -115,7 +130,13 @@ Item {
 
     // Move photo on given index to given level. index is QPoint(index in stripe, stripe index)
     //  See photoIndexByPhotoID function
-    function movePhotoByIndexToLevel( photoIndex, newLevel ) {
+    // if autoCreateLevel is true, then in case of absence newLevel and all missing levels below it will be created
+    function movePhotoByIndexToLevel( photoIndex, newLevel, autoCreateLevel ) {
+        console.log( "Move photo ", photoIndex, " to new level ", newLevel)
+        if( autoCreateLevel === undefined ) {
+            autoCreateLevel = false;
+        }
+
         if( newLevel < 0 ) {
             return;
         }
@@ -134,15 +155,30 @@ Item {
 
         var photoIndexInStripe = photoIndex.x
         if( photoIndexInStripe < 0 || photoIndexInStripe >= stripe.count) {
-            // photo index in stripe is out of range
+            // photo index in current stripe is out of range
             return;
         }
 
         var photoID = stripe.get(photoIndexInStripe).photoID;
 
         var targetStripeIndex = findStripeIndexForLevel(newLevel)
+        console.log( "Stripe lookup result: ", targetStripeIndex)
         if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
-            return;
+            console.log( "No stirpe for level ", newLevel)
+            if( autoCreateLevel ) {
+                if( !ensureLevelExists(newLevel) ) {
+                    console.error( "Can't create necessary level");
+                    return;
+                }
+
+                targetStripeIndex = findStripeIndexForLevel(newLevel);
+                if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
+                    console.error("Error: can't create new stripes. Desired level is: ", newLevel);
+                    return;
+                }
+            } else {
+                return;
+            }
         }
 
         var targetStripe = getStripe(targetStripeIndex);
@@ -167,19 +203,37 @@ Item {
         sourcePhotoModel.get(photoID).level = newLevel
     }
 
-    // Adds empty stripe 'above'
-    function addNewStripe() {
-        var newStripe = d.createStripeModel();
-        newStripe.sourcePhotoModel = sourcePhotoModel;
-        if( d.stripesModels.lengt > 0) {
-            // Array is inverted!
-            newStripe.level = d.stripesModels[0].level
-        } else {
-            newStripe.level = 0;
+    // Makes sure stripe for given level exists. Creates as many levels as necessary.
+    // Returns true on success, false if stripe for requested level could not be created
+    // Usually because level is below 0 or more than maximum allowed levels
+    // Returns false if targetLevel is invalid - null, undefined, -1
+    function ensureLevelExists(targetLevel) {
+        console.log( "Ensure level exists ", targetLevel)
+        if( targetLevel === undefined || targetLevel === null || targetLevel < 0 || targetLevel > maximumAllowedLevel) {
+            return false;
         }
 
-        d.stripesModels.insert( 0, newStripe );
-        d.stripesModelsByLevel[newStripe.level] = newStripe;
+        if( d.stripesModels.count === 0) {
+            // Easy. Just creating one level
+            var stripe = createNewStripe()
+            stripe.level = targetLevel;
+            d.stripesModels.insert(0, {'stripe' : newStripe})
+            d.stripesModelsByLevel[targetLevel] = stipe;
+            return true;
+        } else {
+            // d.stripes is inverted!
+            var maxLevel = getStripe(0).level
+            var minLevel = getStripe(d.stripesModels.count - 1).level
+            if( targetLevel > maxLevel ) {
+                return d.addNewStripesAbove(targetLevel - maxLevel);
+            } else if( targetLevel < minLevel ) {
+                console.log( "Adding ", minLevel - targetLevel, " stripes below");
+                return d.addNewStripesBelow(minLevel - targetLevel)
+            } else {
+                // targetLevel already exists
+                return true;
+            }
+        }
     }
 
     WorkerScript {
@@ -218,7 +272,8 @@ Item {
             } else if( messageObject.status == 'finished' ) {
                 var sourceStripesModels = requestData[requestId]
                 console.assert(sourceStripesModels != undefined, 'Somehow input for request was lost. RequestId is', requestId);
-                d.stripesModels = []
+                // d.stripesModels = [] TODO: Decide
+                d.stripesModels = Qt.createQmlObject("import QtQuick 2.0; ListModel {}", d)
                 d.stripesModelsByLevel = {}
                 for( var i = 0; i < messageObject.models.length; i++) {
                     var sourceIndex = messageObject.models[i];
@@ -228,7 +283,8 @@ Item {
                     sourceModel.sourcePhotoModel = sourcePhotoModel
                     console.log( "Stripe. Level ", sourceModel.level, " Photos count: ", sourceModel.count);
 
-                    d.stripesModels.push( sourceModel );
+                    //d.stripesModels.push( sourceModel ); // TODO: Decide
+                    d.stripesModels.append({"stripe" : sourceModel });
                     d.stripesModelsByLevel[sourceModel.level] = sourceModel;
                 }
 
@@ -285,9 +341,104 @@ Item {
         }
 
         function createStripeModel() {
-           return Qt.createQmlObject(
-                                            "import QtQuick 2.0; PhotoStripeModel {}",
-                                            photoStripesView, "levelModel") // TODO: Use null as a parent ?
+            var result = Qt.createQmlObject(
+                        "import QtQuick 2.0; PhotoStripeModel {}",
+                        photoStripesView, "levelModel") // TODO: Use null as a parent ?
+            result.sourcePhotoModel = sourcePhotoModel;
+            return result;
+        }
+
+        // Adds empty stripe 'above' top one. true if success, false if failed,
+        // for example because exceeded maximumAllowedLevel
+        // if stripesModels is empty (no stripes), then creates stripe with level 0.
+        function addNewStripeAbove() {
+            var newLevel = undefined;
+            if( stripesModels.count > 0) {
+                // Array is inverted!
+                newLevel = getStripe(0).level + 1
+            } else {
+                newLevel = 0;
+            }
+
+            if( newLevel > maximumAllowedLevel) {
+                return false;
+            }
+
+            var newStripe = createStripeModel();
+            newStripe.level = newLevel
+
+            d.stripesModels.insert( 0, {'stripe' : newStripe } );
+            d.stripesModelsByLevel[newLevel] = newStripe;
+
+            return true;
+        }
+
+        // Add N empty stripes 'above' top one. False if unsuccessful.
+        // It either will create count stripes and success, or create 0 stripes and fail.
+        function addNewStripesAbove(count) {
+            if( count === undefined) {
+                count = 1
+            }
+            // Checking that we can create count stripes above
+            var maxLevel = undefined;
+            if( stripesModels.count === 0) {
+                maxLevel = -1
+            } else {
+                maxLevel = getStripe(0).level
+            }
+
+            if( maxLevel + count > maximumAllowedLevel) {
+                return false;
+            }
+
+            for( var i = 0; i < count; i++ ) {
+                if( !addNewStripeAbove() ) {
+                    throw false;
+                }
+            }
+            return true
+        }
+
+        // Same as addNewStripeAbove, but 'below' bottom one. Won't create
+        // stripes if level is negative, obviously. In case of error returns false
+        // If there are no stripes, then DOES NOTHING - unlike addNewStripeAbove(!) - and returns false
+        function addNewStripeBelow() {
+            if( stripesModels.count === 0) {
+                return false;
+            }
+
+            var newLevel = getStripe(stripesModels.count-1).level - 1;
+            if( newLevel < 0) {
+                return false;
+            }
+            var newStripe = createStripeModel();
+            newStripe.level = newLevel
+            console.log( "New stripe below level is ", newLevel)
+
+            d.stripesModels.append( {'stripe' : newStripe } );
+            d.stripesModelsByLevel[newLevel] = newStripe;
+            return true
+        }
+
+        function addNewStripesBelow(count) {
+            if( count === undefined ) {
+                count = 1
+            }
+            console.log( "Adding ", count, " stripes below");
+            if( stripesModels.count === 0) {
+                return false;
+            }
+            var minLevel = getStripe( stripesModels.count - 1).level;
+            if( minLevel - count < 0) {
+                return false;
+            }
+
+            for( var i = 0; i < count; i++) {
+                if( !addNewStripeBelow() ) {
+                    throw false;
+                }
+            }
+            return true;
         }
 
         function initializeAsync() {

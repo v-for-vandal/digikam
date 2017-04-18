@@ -247,7 +247,7 @@ Item {
                     target: bottomMargin
                     height : 0
                 }
-            }
+            },
             State {
                 name: "empty" // Stripe has now photo
                 PropertyChanges {
