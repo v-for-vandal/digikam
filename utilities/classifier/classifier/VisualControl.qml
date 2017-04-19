@@ -16,6 +16,55 @@ Item {
         //connenc
     }
 
+    // general method for moving photos between stripes. It is preferable
+    // to use specialized methods - they automatically provide correct arguments
+    // preserveCursorInStripe - cursor stays within stripe. If there is no more photos in
+    //   stripe, then cursor becomes -1
+    // animate - make movement animated
+    function movePhotoToLevel( photoIndex, newLevel, preserveCursorInLine, animate )
+    {
+        var photoID = stripesModelObject.getPhotoID(photoIndex)
+        if( photoID === -1) {
+            console.error( "No photo matching this photoIndex ", photoIndex)
+            throw false
+        }
+
+        var newCursorPhotoID = undefined
+        if( preserveCursorInLine && cursor.currentPhotoIndex === photoIndex ) {
+            newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
+        }
+
+        var success = stripesModelObject.movePhotoByIndexToLevel( cursor.currentPhotoIndex, newLevel, true);
+
+        if( success ) {
+            // Animation
+            if( animate ) {
+               var refCount = d.movementRegistry[photoID];
+                if(refCount === undefined ) {
+                    refCount = 1
+                } else {
+                    refCount ++;
+                }
+                console.log( "Animated movement for ", photoID, " requested. RefCount: ", refCount)
+                d.movementRegistry[photoID] = refCount
+            }
+
+        // Changing position
+            if( newCursorPhotoID !== undefined) {
+                cursor.currentPhotoID = newCursorPhotoID;
+            } else {
+                // forcefull updating cursor to pick up changes in 'level' property of current photo
+                cursor.forceUpdate()
+            }
+        }
+    }
+    function moveCurrentPhotoUpLevel( preserveCursorInStripe ) {
+        movePhotoToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1, preserveCursorInStripe, true )
+    }
+    function moveCurrentPhotoDownLevel( preserveCursorInLine ) {
+        movePhotoToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1, preserveCursorInLine, true )
+    }
+
     // == Photo cache
     // VisualControl serves as cache for photo Items. It is used for correct animation
     // when moving photos between layers.
@@ -56,7 +105,7 @@ Item {
         var photoObject = d.photoItemsCache[photoID];
         if( photoObject === undefined || photoObject === null ) {
             // Cache record as a whole is missing
-            photoObject = {};
+            photoObject = {"photoID" : photoID };
         }
 
         if( photoObject.item === undefined || photoObject.item === null ) {
@@ -96,11 +145,13 @@ Item {
             animation.stop();
         }
 
+        /* TODO: REMOVE unnecessary. Such animated precision is not needed
         if( item != undefined && item != null && item.parent != null ) {
             // Preserve coordinates for futher use
             var coordsInOurSystem = item.mapToItem(visualControl, 0, 0)
             cacheObject.visualControlCoords = coordsInOurSystem;
-        }
+            console.log( "Caching coordinates for photoID ", photoID, ":", coordsInOurSystem)
+        }*/
 
         // Erase item
         cacheObject.item = undefined
@@ -114,6 +165,11 @@ Item {
 
         // Cache of photo items. Key is photoID
         property var photoItemsCache : null
+
+        // Registry of movements that must be animated. Basically
+        // it is a pair PhotoID -> refCounter. refCounter is needed to track situation
+        // when movement of the photo is interrupted by another movement of the same photo.
+        property var movementRegistry
 
         // RawPhotoView component used for dynamic creation
         property var rawPhotoViewComponent : null
@@ -132,8 +188,12 @@ Item {
             }
 
            photoItemsCache = {} // TODO: REMOVE ?
+           movementRegistry = {}
         }
 
+        // Function will initiate movement of photo item to specified newParent. If there is
+        // registered stripe-to-stripe movement in d.movementRegistry, then it will be animated.
+        // If there is not, then it is immediate
         function initiateMovement( photoObject, newParent ) {
             if( photoObject.movementAnimation !== undefined && photoObject.movementAnimation !== null ) {
                 // Interrupt current animation. We do not complete it, because it is unclear whether there currently
@@ -141,10 +201,21 @@ Item {
                 photoObject.movementAnimation.stop();
             }
 
-            // Move item to VisualControl, preserving it's coordinates. If item.parent is currently null, then place
-            // it in 'offscreen' area for now
             var item = photoObject.item
-            var animate = true
+
+            var refCount = d.movementRegistry[photoObject.photoID];
+        // Non-animated movement
+            if( refCount === undefined || refCount === 0) {
+                console.log( "Executing non-animated movement. Photo: ", photoObject.photoID )
+                d.nonAnimatedMovement(item, newParent)
+                return
+            }
+
+            //
+            refCount --;
+            d.movementRegistry[photoObject.photoID] = refCount;
+
+            var coordsInNewParent = undefined
             console.log( "Initiating movement from ", item.parent, " to ", newParent);
 
             if( item.parent === null || item.parent === undefined ) {
@@ -157,48 +228,75 @@ Item {
                 /*item.parent = visualControl // TODO: REMOVE
                 item.x = -item.width - 20 // Just in case
                 item.y = visualControl.height / 2*/
+                /* TODO: REMOVE CACHE
                 var cachedCoords = photoObject.visualControlCoords
                 if( cachedCoords !== undefined) {
-                    console.log( "Using cached coords")
-                    item.parent = visualControl
-                    item.x = cachedCoords.x
-                    item.y = cachedCoords.y
+                    coordsInNewParent = newParent.mapFromItem( visualControl,
+                                                                              cachedCoords.x,
+                                                                              cachedCoords.y)
+                    console.log( "Using cached coords: ", cachedCoords, " (in local c/s): ", cachedCoordsInNewParentSystem)
+                    item.parent = newParent
+                    item.x = cachedCoordsInNewParentSystem.x
+                    item.y = cachedCoordsInNewParentSystem.y
                 } else {
                     item.parent = newParent
                     item.x = 0
                     item.y = 0
                     animate = false
-                }
+                }*/
+                // For now - general offscreen coordinates
+                console.log( "using general off-screen coordinates")
+                coordsInNewParent = visualControl.mapToItem(newParent, -item.width*2, visualControl.height / 2)
             } else {
-                var coordsInOurSystem = item.parent.mapToItem(visualControl, item.x, item.y);
-                // Detach current parent and attach to self
-                item.parent = visualControl
-                item.x = coordsInOurSystem.x
-                item.y = coordsInOurSystem.y
+                console.log( "using current position")
+                coordsInNewParent = item.mapToItem(newParent, 0, 0);
             }
 
+    // Reparent to newParent
+    item.parent = newParent
+    item.x = coordsInNewParent.x
+    item.y = coordsInNewParent.y
 
-            if( animate === true ) {
+
                 // TODO: REMOVE
                 {
-                    var dbgTargetCoords = visualControl.mapFromItem( newParent, 0, 0);
-                    console.log( "VC: moving from (", item.x, ",", item.y, ") to ", dbgTargetCoords);
+                    var dbgTargetCoords = Qt.point(0,0) //visualControl.mapFromItem( newParent, 0, 0);
+                   var dbgVCCoords = visualControl.mapFromItem(newParent, item.x, item.y)
+                    console.log( "VC: moving from (", item.x, ",", item.y, ") (global:", dbgVCCoords,") to ", dbgTargetCoords);
+                }
+
+                var stripeIndex = stripesModel.findStripeIndexForPhotoID()
+                var stripeObject = {
+                    "raiseStripeZ" : function() { return photoStripesView.raiseStripeZ(stripeIndex); },
+                    "restoreStripeZ" : function() { return photoStripesView.restoreStripeZ(stripeIndex); }
                 }
 
                 var newParentCoordsInOurSystemBinding = Qt.binding( function() { return visualControl.mapFromItem( newParent, 0, 0); } );
                 // Let's forget old animation entirely. It's state is unclear - it may have already finished,
                 // it may have been interrupted by previous statement, etc
-                photoObject.movementAnimation = d.moveReparentAnimationComponent.createObject(visualControl,
-                                                                                              {
-                                                                                                  "target" : item,
-                                                                                                  "newParent" : newParent,
-                                                                                                  "duration" : 5000,
-                                                                                                  "targetPoint" : newParentCoordsInOurSystemBinding
-                                                                                              });
+                photoObject.movementAnimation =
+                        d.moveReparentAnimationComponent.createObject(
+                            visualControl,
+                            {
+                                "target" : item,
+                                "newParent" : newParent,
+                                "duration" : 5000,
+                                //"targetPoint" : newParentCoordsInOurSystemBinding,
+                                "stripeObject" : stripeObject
+                            });
                 photoObject.movementAnimation.start();
-            }
-
         }
+
+    function nonAnimatedMovement( item, newParent ) {
+    item.parent = newParent
+    item.x = 0
+    item.y = 0
+    }
+
+    function initiateAnimatedMovement( item, newParent ) {
+
+    }
+
 
 
     }

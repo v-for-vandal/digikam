@@ -28,6 +28,7 @@ Rectangle { // TODO: Make Item before deploying
         drag.axis: Drag.YAxis
         onClicked: {
             console.log( "Clicked on photo: ", model.photoID);
+            console.log( "Global coords: ", wrapper.mapToItem(photoStripeView.visualControlObject, 0,0) )
             cursorObject.currentPhotoID = model.photoID;
         }
     }

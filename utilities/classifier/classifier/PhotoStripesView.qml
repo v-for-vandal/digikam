@@ -12,6 +12,8 @@ Item {
     readonly property Item viewAreaItem : viewArea
     // Cursor item
     readonly property QtObject cursorObject : cursor
+    // Visual control item
+    readonly property Item visualControlObject : visualControl
 
     // Returns current item
     function getCurrentPhoto() {
@@ -98,39 +100,15 @@ Item {
         stripe.collapse()
     }
 
-    // TODO: Move those function to separate object VisualControl
-    function moveCurrentPhotoUpLevel( preserveCursorInLine ) {
-        var newCursorPhotoID = undefined
-        if( preserveCursorInLine ) {
-            newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
-        }
-
-        stripesModelObject.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1, true);
-        // updating cursor
-        cursor.forceUpdate()
-        // Changing position
-        // TODO: If moving failed, don't update cursor!
-        if( newCursorPhotoID !== undefined) {
-            cursor.currentPhotoID = newCursorPhotoID;
-        }
+    function raiseStripeZ( stripeIndex ) {
+        var stripe = columnPositioner.children[stripeIndex];
+        stripe.z = 2
     }
-    function moveCurrentPhotoDownLevel( preserveCursorInLine ) {
-        var newCursorPhotoID = undefined
-        if( preserveCursorInLine ) {
-            newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
-        }
 
-        stripesModelObject.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1, true);
-        // updating cursor
-        cursor.forceUpdate()
-
-        // Changing position
-        // TODO: If moving failed, don't update cursor!
-        if( newCursorPhotoID !== undefined) {
-            cursor.currentPhotoID = newCursorPhotoID;
-        }
+    function restoreStripeZ( stripeIndex ) {
+        var stripe = columnPositioner.children[stripeIndex];
+        stripe.z = 1
     }
-    // End of VisualControl
 
     Component.onCompleted: {
         console.log("Self? :", photoStripesView)

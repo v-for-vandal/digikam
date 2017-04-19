@@ -43,6 +43,24 @@ Item {
         return d.stripesModels.count;
     }
 
+    // PhotoID by photo index. -1 if index is invalid
+    function getPhotoID(photoIndex) {
+        var stripeIndex = photoIndex.y
+        var stripe = getStripe(stripeIndex);
+        if( stripe === undefined ) {
+            console.warn( "No stripe on index: ", photoIndex.y)
+            // stripe index out of range
+            return -1;
+        }
+        var photoIndexInStripe = photoIndex.x
+        var photoID = stripe.get(photoIndexInStripe).photoID;
+        if( photoID === undefined || photoID === null ) {
+            console.warn( "No photo in stripe(len", stripe.count, ") at index ", photoIndexInStripe, " photoID returned is ", photoID)
+            photoID = -1;
+        }
+        return photoID;
+    }
+
     // Returns photo index of a photo with given ID. photo index is QPoint( index in stripe, stripe index)
     // undefined if photo with such ID do not exist
     function photoIndexByPhotoID(targetPhotoID) {
@@ -113,6 +131,11 @@ Item {
         return result
     }
 
+    function findStripeIndexForPhotoID(targetPhotoID) {
+        return findStripeIndexForLevel(
+                    sourcePhotoModel.get(targetPhotoID).level);
+    }
+
     // Returns index of photo with given photoID in given stripe. -1 if stripe has no such photo
     function findPhotoIndexInStripeByPhotoID(stripeIndex, targetPhotoID) {
         console.log("Searching photo with ID ", targetPhotoID,
@@ -131,6 +154,8 @@ Item {
     // Move photo on given index to given level. index is QPoint(index in stripe, stripe index)
     //  See photoIndexByPhotoID function
     // if autoCreateLevel is true, then in case of absence newLevel and all missing levels below it will be created
+    // Return's true if movement was performed, false otherwise (whether it is by error in code, incorrect arguments,
+    // or valid situation, like inability to create new level or photo being in newLevel already)
     function movePhotoByIndexToLevel( photoIndex, newLevel, autoCreateLevel ) {
         console.log( "Move photo ", photoIndex, " to new level ", newLevel)
         if( autoCreateLevel === undefined ) {
@@ -138,25 +163,25 @@ Item {
         }
 
         if( newLevel < 0 ) {
-            return;
+            return false;
         }
 
         var stripeIndex = photoIndex.y
         var stripe = getStripe(stripeIndex);
         if( stripe === undefined ) {
             // stripe index out of range
-            return;
+            return false;
         }
 
         // If newLevel is equal to current level, then do nothing
         if( stripe.level === newLevel ) {
-            return;
+            return false;
         }
 
         var photoIndexInStripe = photoIndex.x
         if( photoIndexInStripe < 0 || photoIndexInStripe >= stripe.count) {
             // photo index in current stripe is out of range
-            return;
+            return false;
         }
 
         var photoID = stripe.get(photoIndexInStripe).photoID;
@@ -168,13 +193,13 @@ Item {
             if( autoCreateLevel ) {
                 if( !ensureLevelExists(newLevel) ) {
                     console.error( "Can't create necessary level");
-                    return;
+                    return false;
                 }
 
                 targetStripeIndex = findStripeIndexForLevel(newLevel);
                 if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
                     console.error("Error: can't create new stripes. Desired level is: ", newLevel);
-                    return;
+                    return false;
                 }
             } else {
                 return;
@@ -186,7 +211,7 @@ Item {
         // insertionPosition must be negative. Positive one means that photo is already in the stripe
         if( insertionPosition >= 0) {
             console.error( "Photo is already in target stripe");
-            return;
+            return false;
         }
 
         insertionPosition = -(insertionPosition+1);
@@ -201,6 +226,8 @@ Item {
 
         // Changing level in source photo
         sourcePhotoModel.get(photoID).level = newLevel
+
+        return true;
     }
 
     // Makes sure stripe for given level exists. Creates as many levels as necessary.

@@ -5,8 +5,27 @@ SequentialAnimation {
     id: movementAnimation
     property Item target;
     property Item newParent
-    property point targetPoint // In movement-field-item coordinates
+    property point targetPoint // In movement-field-item coordinates TODO: REMOVE
     property int duration
+    property var stripeObject : null // Must have methods raiseStripeZ/restoreStripeZ
+
+    // Raise stripe Z
+    ScriptAction {
+        script: stripeObject.raiseStripeZ();
+    }
+
+    // Reparent
+    /*
+    ScriptAction {
+        script: {
+            var coords = target.mapToItem(newParent, 0 ,0)
+            target.parent = newParent;
+
+            target.x = coords.x; target.y = coords.y;
+            console.log("Repartende coords: ", coords)
+        }
+        // TODO: REMOVE anchors
+    }*/
 
     // Move
     ParallelAnimation {
@@ -15,7 +34,8 @@ SequentialAnimation {
             target: movementAnimation.target
             duration: movementAnimation.duration
             properties: "x"
-            to: { target.parent.mapFromItem(newParent,0,0).x }
+            //to: { target.parent.mapFromItem(newParent,0,0).x }
+            to: 0
             // to: targetPoint.x
             //to: newParent.mapToItem(target.parent, 0, 0).x
             // from will be automatically deduced from current value
@@ -25,13 +45,14 @@ SequentialAnimation {
             target: movementAnimation.target
             duration: movementAnimation.duration
             properties: "y"
-            to: targetPoint.y
+            //to: targetPoint.y
+            to: 0
             easing.type: Easing.InOutQuad
         }
     }
-    // Reparent
+
     ScriptAction {
-        script: {target.parent = newParent; target.x = 0; target.y = 0; } // TODO: REMOVE anchors
+        script: stripeObject.restoreStripeZ();
     }
 
     ScriptAction {

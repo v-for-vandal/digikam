@@ -163,6 +163,7 @@ Item {
 
     // When data inside source photo model changes, cursor must be updated. ListModel has no 'changed' signal,
     // so it must be done manually
+    // Example - when changing 'level' property of photo
     function forceUpdate() {
         d.forceUpdater = (d.forceUpdater + 1) % 2
     }

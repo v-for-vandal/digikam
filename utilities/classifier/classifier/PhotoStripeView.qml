@@ -1,6 +1,7 @@
 import QtQuick 2.0
 
 Item {
+    id: photoStripeView
     // User settings
     property alias stripeModel: stripeView.model
     property var cursorObject // TODO: make property Cursor instead of property var
