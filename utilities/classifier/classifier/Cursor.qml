@@ -24,7 +24,10 @@ Item {
             return Qt.point(-1,-1);
         }
 
-        var stripeIndex = stripesModel.findStripeIndexForLevel(currentLevel)
+        // It is better to query photo level explicitly instead of relying on currentLevel property - because order of properties
+        // binding updates is undetermined and currentLevel might be incorrect when currentPhotoIndex is updated;
+        var photoLevel = stripesModel.sourcePhotoModel.get(currentPhotoID).level
+        var stripeIndex = stripesModel.findStripeIndexForLevel(photoLevel)
         var photoIndex = stripesModel.findPhotoIndexInStripeByPhotoID(
                     stripeIndex, currentPhotoID)
 

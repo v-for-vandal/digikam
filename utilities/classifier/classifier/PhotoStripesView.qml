@@ -6,6 +6,7 @@ Item {
     // User properties
     property int stripesVisible: 3
     property alias sourcePhotoModel : stripesModelObject.sourcePhotoModel
+    readonly property int stripeHeight : Math.floor( height/ stripesVisible)
 
     // Main view area. Mostly used internally
     readonly property Item viewAreaItem : viewArea
@@ -104,7 +105,7 @@ Item {
             newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
         }
 
-        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1, true);
+        stripesModelObject.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel + 1, true);
         // updating cursor
         cursor.forceUpdate()
         // Changing position
@@ -119,7 +120,7 @@ Item {
             newCursorPhotoID = cursor.findPreservationPhotoIDInLevel();
         }
 
-        stripesModel.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1, true);
+        stripesModelObject.movePhotoByIndexToLevel( cursor.currentPhotoIndex, cursor.currentLevel - 1, true);
         // updating cursor
         cursor.forceUpdate()
 
@@ -152,9 +153,10 @@ Item {
 
     VisualControl {
         id: visualControl
-        parent: null // No need to draw it
+        anchors.fill: parent // We need to draw it all over the view area
         stripeViews: photoStripesView
         stripesModel: stripesModelObject
+        z : 4
     }
 
     Item {
@@ -180,7 +182,7 @@ Item {
 
                     delegate: PhotoStripeViewDelegate {
                         width: mainView.width
-                        height: Math.floor( photoStripesView.height/ photoStripesView.stripesVisible)
+                        height: stripeHeight
                         cursorObject: cursor
                         visualControlObject: visualControl
                         stripeModel: stripe // 'stripe' is the name of the role. This is delegate and thus it has direct access to roles of it's element

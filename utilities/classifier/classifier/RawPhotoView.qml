@@ -1,6 +1,11 @@
 import QtQuick 2.0
 
-Text {
+Rectangle {
     property int photoID
-    text: "Photo ID: " + photoID
+    border.width: 5
+
+    Text {
+        anchors.centerIn: parent
+        text: "Photo ID: " + photoID
+    }
 }

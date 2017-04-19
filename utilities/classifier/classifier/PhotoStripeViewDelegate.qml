@@ -96,10 +96,10 @@ Item {
             // Pause for debugging
 
             PauseAnimation {
-                duration: 500
+                duration: 500 // TODO: REMOVE
             }
             ScriptAction {
-                script: console.log( "rootView parent is", rootView.parent.objectName)
+                script: console.log( "rootView parent is", rootView.parent.objectName) // TODO: REMOVE
             }
 
             // change dimensions
@@ -108,21 +108,25 @@ Item {
                     target: rootView
                     property: "height"
                     to: photoStripesView.viewAreaItem.height
+                    easing.type: Easing.InOutQuad
                 }
                 PropertyAnimation {
                     target: rootView
                     property: "y"
                     to: 0
+                    easing.type: Easing.InOutQuad
                 }
                 PropertyAnimation {
                     target: rootView
                     property: "width"
                     to: photoStripesView.viewAreaItem.width
+                    easing.type: Easing.InOutQuad
                 }
                 PropertyAnimation {
                     target: rootView
                     property: "x"
                     to: 0
+                    easing.type: Easing.InOutQuad
                 }
             }
 
@@ -143,13 +147,12 @@ Item {
             id: collapseAnimation
 
             // undo current anchors
-            // undo current anchors
             ScriptAction {
                 script: rootView.anchors.fill = undefined
             }
 
             ScriptAction {
-                script: console.log( "rootView parent is", rootView.parent.objectName)
+                script: console.log( "rootView parent is", rootView.parent.objectName) // TOOD: REMOVE
             }
 
             // Change coordinates before changing parent
@@ -160,12 +163,14 @@ Item {
                     target: rootView
                     property: "height"
                     to: root.height
+                    easing.type: Easing.InOutQuad
                 }
                 PropertyAnimation {
                     target: rootView
                     property: "y"
                     // 0 in root cord/system  to photoStripesView coord/system
                     to: root.mapToItem( rootView.parent, 0, 0).y
+                    easing.type: Easing.InOutQuad
                 }
             }
 
@@ -176,7 +181,7 @@ Item {
             }
 
             PauseAnimation {
-                duration: 500
+                duration: 500 // TODO: REMOVE, obviously
             }
 
             // Now restore anchors. It will also fix the situation when during first
@@ -187,12 +192,14 @@ Item {
                     target: rootView
                     property: "height"
                     to: root.height
+                    easing.type: Easing.InOutQuad
                 }
                 PropertyAnimation {
                     duration: 100
                     target: rootView
                     property: "y"
                     to: 0
+                    easing.type: Easing.InOutQuad
                 }
             }
 
