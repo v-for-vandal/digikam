@@ -169,11 +169,11 @@ Item {
     }
 
     onCurrentLevelChanged: {
-        console.log("Current level is now: ", currentLevel)
+		//console.log("Current level is now: ", currentLevel)
     }
 
     onStripesModelChanged: {
-        console.log("New stripes model is: ", stripesModel)
+		//console.log("New stripes model is: ", stripesModel)
     }
 
     QtObject {

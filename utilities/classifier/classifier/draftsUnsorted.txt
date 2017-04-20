@@ -1,0 +1,103 @@
+// Various bits of js code. Remove before release TODO:
+
+// == Photo cache
+// VisualControl serves as cache for photo Items. It is used for correct animation
+// when moving photos between layers.
+// Photo Items in this cache has VisualControl QObject-parent, but their visual
+// parent is delegate where they are currently displayed.
+// Only currently visible'ish photos are stored in cache (Technically, photos that are reference
+// by existing delegate. Delegates are managed by ListView and it usually destroys delegate
+// when it is no longer visible).
+// Cache is necessary for correct animation when moving photos between stripes.
+
+// This function starts animation that will move Item from current position to newParent and automatically assign it once finished.
+// It also returns specified Item - but you should abstain with doing any operations with it before movement is finished
+// QObject-parent of this item is always VisualControl itself,
+// but visual parent may change.
+// Return structure is:
+// {
+//	 "item": Item itself,
+//	 "movementAnimation" : animation that moves item to specified position and reparents it once done.
+// }
+function requestPhotoItem(photoID, newParent) {
+	if (stripesModel === undefined || stripesModel === null) {
+		console.error("Stripes model is undefined")
+		return null
+	}
+
+	if (newParent === null || newParent === undefined) {
+		console.error("Can't move to null parent")
+		return null
+	}
+
+	if (photoID === undefined || photoID === null || photoID < 0
+			|| photoID >= stripesModel.sourcePhotoModel.count) {
+		console.warn("Requested PhotoID is invalid")
+		return null
+	}
+
+	console.log("Request to move photo with ID ", photoID,
+				"to new parent ", newParent)
+	var photoObject = d.photoItemsCache[photoID]
+	if (photoObject === undefined || photoObject === null) {
+		// Cache record as a whole is missing
+		photoObject = {
+			photoID: photoID
+		}
+	}
+
+	if (photoObject.item === undefined || photoObject.item === null) {
+		// Cache record contains no item - because item was already released
+		console.log("VC: cache miss. Creating object.")
+		console.assert(d.rawPhotoViewComponent !== null
+					   && d.rawPhotoViewComponent !== undefined)
+
+		var photo = stripesModel.sourcePhotoModel.get(photoID)
+		console.log("Creating photo item. width: ", photo.width,
+					"border.color: ", photo.color)
+		var item = d.rawPhotoViewComponent.createObject(visualControl, {
+															photoID: photoID,
+															width: photo.width,
+															height: photoStripesView.stripeHeight,
+															border.color// TODO: Must be binging
+															: photo.color
+														})
+		item.parent = null
+		photoObject.item = item
+
+		d.photoItemsCache[photoID] = photoObject
+	}
+
+	d.initiateMovement(photoObject, newParent)
+	return photoObject
+}
+
+function releasePhotoItem(photoID) {
+	// TODO: Idea: replace value with undefined. Once size of dict grows to 100+ items, most of which are undefines, - create new object without undefines and copy it over
+	// TODO: Update to previous todo - most 'removed' items will be objects with only visualControlCoords
+	var cacheObject = d.photoItemsCache[photoID]
+	if (cacheObject === undefined || cacheObject === null) {
+		return
+	}
+
+	var item = cacheObject.item
+	var animation = cacheObject.movementAnimation
+
+	if (animation !== undefined && animation !== null) {
+		animation.stop()
+	}
+
+	/* TODO: REMOVE unnecessary. Such animated precision is not needed
+			if( item != undefined && item != null && item.parent != null ) {
+						// Preserve coordinates for futher use
+									var coordsInOurSystem = item.mapToItem(visualControl, 0, 0)
+												cacheObject.visualControlCoords = coordsInOurSystem;
+															console.log( "Caching coordinates for photoID ", photoID, ":", coordsInOurSystem)
+																	}*/
+
+	// Erase item
+	cacheObject.item = undefined
+	cacheObject.animation = undefined
+
+	// TODO: IMplement ring buffer to store last 10(?) items
+}

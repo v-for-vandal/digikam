@@ -26,6 +26,22 @@ Item {
             add : Transition {
                 NumberAnimation { properties: "x,y"; duration: 500; from: 200 }
             }*/
+			add : Transition {
+				id: addTrans
+				//SequentialAnimation {
+					//NumberAnimation { properties: "x,y"; duration: 100; }
+					ScriptAction {
+						script: {
+							console.log( "ViewTransition.item", addTrans.ViewTransition.item)
+							console.log( "ViewTransition.index", addTrans.ViewTransition.index)
+							console.log( "ViewTransition.destination ", addTrans.ViewTransition.destination);
+							console.log( "In transition coords: ", addTrans.ViewTransition.item.x, addTrans.ViewTransition.item.y);
+							// TODO: Initiate loading photo from transition :)
+						}
+					}
+				//}
+			}
+
             addDisplaced : Transition {
                 NumberAnimation { properties: "x,y"; duration: 500 }
             }

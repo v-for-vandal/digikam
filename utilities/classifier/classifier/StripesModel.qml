@@ -138,10 +138,10 @@ Item {
 
     // Returns index of photo with given photoID in given stripe. -1 if stripe has no such photo
     function findPhotoIndexInStripeByPhotoID(stripeIndex, targetPhotoID) {
-        console.log("Searching photo with ID ", targetPhotoID,
-                    " in stripe on index ", stripeIndex)
+		/*console.log("Searching photo with ID ", targetPhotoID,
+					" in stripe on index ", stripeIndex)*/
         if (stripeIndex < 0 || stripeIndex >= d.stripesModels.count) {
-            console.log("Stripe index is out of range")
+			//console.log("Stripe index is out of range")
             return -1
         }
         var stripe = getStripe(stripeIndex)
@@ -157,7 +157,7 @@ Item {
     // Return's true if movement was performed, false otherwise (whether it is by error in code, incorrect arguments,
     // or valid situation, like inability to create new level or photo being in newLevel already)
     function movePhotoByIndexToLevel( photoIndex, newLevel, autoCreateLevel ) {
-        console.log( "Move photo ", photoIndex, " to new level ", newLevel)
+		// console.log( "Move photo ", photoIndex, " to new level ", newLevel)
         if( autoCreateLevel === undefined ) {
             autoCreateLevel = false;
         }
@@ -187,9 +187,9 @@ Item {
         var photoID = stripe.get(photoIndexInStripe).photoID;
 
         var targetStripeIndex = findStripeIndexForLevel(newLevel)
-        console.log( "Stripe lookup result: ", targetStripeIndex)
+		//console.log( "Stripe lookup result: ", targetStripeIndex)
         if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
-            console.log( "No stirpe for level ", newLevel)
+			//console.log( "No stirpe for level ", newLevel)
             if( autoCreateLevel ) {
                 if( !ensureLevelExists(newLevel) ) {
                     console.error( "Can't create necessary level");

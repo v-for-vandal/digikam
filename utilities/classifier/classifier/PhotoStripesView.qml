@@ -25,7 +25,7 @@ Item {
     }
 
     function ensureStripeVisibility(stripeIndex, forceTop) {
-        console.log("Ensuring visibility of stripe index ", stripeIndex)
+		//console.log("Ensuring visibility of stripe index ", stripeIndex)
         if( mainView.contentHeight == 0) {
             return; // There is nothing in view
         }

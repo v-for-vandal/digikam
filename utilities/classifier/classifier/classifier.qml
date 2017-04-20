@@ -46,10 +46,10 @@ Window {
             event.accepted = true;
         }
         Keys.onDigit8Pressed: {
-            photoStripesView.visualControlObject.moveCurrentPhotoUpLevel(true);
+			photoStripesView.visualControlObject.visualMoveCurrentPhotoUpLevel(true);
         }
         Keys.onDigit2Pressed: {
-            photoStripesView.visualControlObject.moveCurrentPhotoDownLevel(true);
+			photoStripesView.visualControlObject.visualMoveCurrentPhotoDownLevel(true);
         }
     }
 

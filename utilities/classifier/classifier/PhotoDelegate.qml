@@ -43,7 +43,7 @@ Rectangle { // TODO: Make Item before deploying
 
     Component.onCompleted: {
         // Load photo onto self
-        d.loadPhoto(model.photoID);
+		//d.loadPhoto(model.photoID);
         d.photoID = model.photoID;
         d.updateHighlight(cursorObject);
         //console.log( "Photo delegate is created: ", model.photoID)
@@ -52,7 +52,7 @@ Rectangle { // TODO: Make Item before deploying
     Component.onDestruction: {
         //console.log( "Photo delegate is destroyed: ", model.photoID);
         // model.photoID is unavailable because connection to model is already severed
-        d.releasePhoto(d.photoID);
+		//d.releasePhoto(d.photoID);
     }
 
     ParallelAnimation {
@@ -82,7 +82,8 @@ Rectangle { // TODO: Make Item before deploying
 
         // Highlight item. Might be null
         property var highlightItem : null
-        // Photo item
+		// Photo item. Photo item has no QObject-parent, so it is imperative
+		// to have explicit reference to it as long as it needed
         property var photoItem;
         // Our id
         property int photoID;
@@ -147,7 +148,7 @@ Rectangle { // TODO: Make Item before deploying
                 return;
             }
 
-            photoItem = visualControlObject.requestPhotoItem(id, photoPlaceHolder);
+			photoItem = visualControlObject.requestPhotoItem(id, photoPlaceHolder).item;
         }
 
         function releasePhoto(id) {
