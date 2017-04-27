@@ -102,4 +102,41 @@ ListModel {
 		level : 3
 	}*/
 
+	ListElement {
+		width : 400
+		height : 300
+		color : "#FF0000";
+		level : 1;
+	}
+	ListElement {
+		width : 200
+		height : 300
+		color : "#00FF00"
+		level : 1
+	}
+	ListElement {
+		width : 350
+		height : 300
+		color : "#0F00F0"
+		level : 1
+	}
+	ListElement {
+		width : 150
+		height : 300
+		color : "#AA0F55"
+		level : 1
+	}
+	ListElement {
+		width : 500
+		height : 300
+		color : "#A0E705"
+		level : 1
+	}
+	ListElement {
+		width : 400
+		height : 300
+		color : "#FF0000";
+		level : 1;
+	}
+
 }

@@ -14,6 +14,7 @@ Window {
         anchors.fill: parent
         sourcePhotoModel : imageModel
         focus: true
+		debugArea: stripesDebugInfo
 
         Keys.onRightPressed: {
             console.log("Right pressed");
@@ -46,10 +47,10 @@ Window {
             event.accepted = true;
         }
         Keys.onDigit8Pressed: {
-			photoStripesView.visualControlObject.visualMoveCurrentPhotoUpLevel(true);
+			photoStripesView.visualControlObject.moveCurrentPhotoUpLevel(true);
         }
         Keys.onDigit2Pressed: {
-			photoStripesView.visualControlObject.visualMoveCurrentPhotoDownLevel(true);
+			photoStripesView.visualControlObject.moveCurrentPhotoDownLevel(true);
         }
     }
 
@@ -59,48 +60,57 @@ Window {
         anchors.top: parent.top
         anchors.bottom: parent.bottom
         opacity: 0.5
-        width: mainInfo.width + 20
+		width: childrenRect.width + 20
         property color textColor : "red"
 
-        Grid {
-            id: mainInfo
-            columns: 2
-            spacing: 2
-            horizontalItemAlignment: Grid.AlignLeft
+			Grid {
+				id: mainInfo
+				columns: 2
+				spacing: 2
+				horizontalItemAlignment: Grid.AlignLeft
 
-            Text {
-                text: "Current photo id:"
-                color: debugInfo.textColor
-            }
-            Text {
-                text: photoStripesView.cursorObject.currentPhotoID
-                color: debugInfo.textColor
-            }
-            Text {
-                text: "Current level:"
-                color: debugInfo.textColor
-            }
-            Text {
-                text: photoStripesView.cursorObject.currentLevel
-                color: debugInfo.textColor
-            }
-            Text {
-                text: "Current stripe index:"
-                color: debugInfo.textColor
-            }
-            Text {
-                text: photoStripesView.cursorObject.currentPhotoIndex.y
-                color: debugInfo.textColor
-            }
-            Text {
-                text: "Current photo index:"
-                color: debugInfo.textColor
-            }
-            Text {
-                text: photoStripesView.cursorObject.currentPhotoIndex.x
-                color: debugInfo.textColor
-            }
-        }
+				Text {
+					text: "Current photo id:"
+					color: debugInfo.textColor
+				}
+				Text {
+					text: photoStripesView.cursorObject.currentPhotoID
+					color: debugInfo.textColor
+				}
+				Text {
+					text: "Current level:"
+					color: debugInfo.textColor
+				}
+				Text {
+					text: photoStripesView.cursorObject.currentLevel
+					color: debugInfo.textColor
+				}
+				Text {
+					text: "Current stripe index:"
+					color: debugInfo.textColor
+				}
+				Text {
+					text: photoStripesView.cursorObject.currentPhotoIndex.y
+					color: debugInfo.textColor
+				}
+				Text {
+					text: "Current photo index:"
+					color: debugInfo.textColor
+				}
+				Text {
+					text: photoStripesView.cursorObject.currentPhotoIndex.x
+					color: debugInfo.textColor
+				}
+			}
+
+			Rectangle {
+				anchors.top : mainInfo.bottom
+				border.color: "black"
+				border.width: 2
+				id: stripesDebugInfo
+				width: childrenRect.width
+			}
+
     }
 
     /*

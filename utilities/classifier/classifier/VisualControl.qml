@@ -13,6 +13,9 @@ Item {
 	property var stripeViews
 	property var stripesModel
 
+
+    // ==== Synchronized movement of stripes ====
+
 	function movementStarted(initiator) {//connenc
 		// Synchronious movement - just bind ranges of inactive stripes [0, contentX - widthRatio] to same range in active stripeHeight
 		// Essenctially we map every stripe to [0,1] and move them all in this a-la coords/system synchroniously
@@ -63,6 +66,11 @@ Item {
 			console.error("No photo matching this photoIndex ", photoIndex)
 			throw false
 		}
+
+        // TODO: Idea: in delegate "onRemove" free item and put it into cache
+        // in delegate Component.onCompleted request item. If item is marked for "movement", then
+        // it is not returned, because delegate "onAdd" slot will be called soon. If it is not
+        // marked for movement, then it is returned
 
 		// This variable will be filled only if needed
 		var photoObject = null

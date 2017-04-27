@@ -3,11 +3,15 @@ import QtQml.StateMachine 1.0 as DSM
 
 Item {
     id: root
-    objectName: "Delegate main"
+    objectName: "Delegate main " + index
     // User settings
     property alias cursorObject : stripeView.cursorObject
     property alias stripeModel : stripeView.stripeModel
     property alias visualControlObject : stripeView.visualControlObject
+    readonly property alias stripeOriginX : stripeView.stripeOriginX
+    property alias stripeContentX : stripeView.stripeContentX
+    readonly property alias stripeContentWidth : stripeView.stripeContentWidth
+    readonly property alias stripeVisibleArea : stripeView.stripeVisibleArea
 
     NumberAnimation {
         id: heightAnimation

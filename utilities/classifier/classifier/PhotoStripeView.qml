@@ -8,6 +8,10 @@ Item {
     property VisualControl visualControlObject
     // Read-only properties
     readonly property bool isCurrentLevel: cursorObject.currentLevel === stripeModel.level
+    readonly property alias stripeOriginX : stripeView.originX
+    property alias stripeContentX : stripeView.contentX
+    readonly property alias stripeContentWidth : stripeView.contentWidth
+    readonly property alias stripeVisibleArea : stripeView.visibleArea
 
     Rectangle {
         anchors.fill: parent
@@ -20,7 +24,18 @@ Item {
             orientation: Qt.Horizontal
             cacheBuffer: 0
             delegate: PhotoDelegate {
+                ListView.onRemove : {
+                    console.log( "PSV: Delegate for ", model.photoID, " removed")
+                }
+                ListView.onAdd : {
+                    console.log( "PSV: Delegate for ", model.photoID, " added")
+                }
             }
+
+            /*
+            onVisibleAreaChanged: {
+                console.log( "PSV: Visible area changed")
+            }*/
 
             /*
             add : Transition {
@@ -40,7 +55,16 @@ Item {
 						}
 					}
 				//}
+                    /*
+                    onRunningChanged: {
+                        if( addTrans.running === false ) {
+                            addTrans.ViewTransition.item.loadPhoto()
+                        }
+                    }*/
 			}
+
+            // Do not use populate transition - it is broken at least up to Qt 5.8
+            // populate: null
 
             addDisplaced : Transition {
                 NumberAnimation { properties: "x,y"; duration: 500 }

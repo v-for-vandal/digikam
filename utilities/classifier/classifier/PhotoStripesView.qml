@@ -1,4 +1,4 @@
-import QtQuick 2.0
+import QtQuick 2.6
 import QtQml.StateMachine 1.0 as DSM
 
 Item {
@@ -6,7 +6,8 @@ Item {
     // User properties
     property int stripesVisible: 3
     property alias sourcePhotoModel : stripesModelObject.sourcePhotoModel
-    readonly property int stripeHeight : Math.floor( height/ stripesVisible)
+	readonly property int stripeHeight : Math.floor( height/ stripesVisible) // TODO: Make user-settable
+	property Item debugArea : null
 
     // Main view area. Mostly used internally
     readonly property Item viewAreaItem : viewArea
@@ -24,6 +25,10 @@ Item {
         return sourcePhotoModel.get(currentPhotoID)
     }
 
+    function getStripeViewItem(stripeIndex) {
+        return stripesRepeater.itemAt(stripeIndex)
+    }
+
     function ensureStripeVisibility(stripeIndex, forceTop) {
 		//console.log("Ensuring visibility of stripe index ", stripeIndex)
         if( mainView.contentHeight == 0) {
@@ -39,7 +44,7 @@ Item {
             var pos = mainView.contentY
             var destPos;
             // Stripe itself
-            var stripe = columnPositioner.children[stripeIndex];
+            var stripe = getStripeViewItem(stripeIndex);
             // To make stripe visible we need to either scroll flickable up if stripe is below current view area,
             // or down - if stripe is above. Or, if stripe is visible, than do nothing at all
 
@@ -86,27 +91,27 @@ Item {
     }
 
     function ensurePhotoVisibility( stripeIndex, photoIndexInStripe ) {
-        var stripe = columnPositioner.children[stripeIndex];
+        var stripe = getStripeViewItem(stripeIndex);
         stripe.ensurePhotoVisibility(photoIndexInStripe);
     }
 
     function expandStripe( stripeIndex ) {
-        var stripe = columnPositioner.children[stripeIndex];
+        var stripe = getStripeViewItem(stripeIndex);
         stripe.expand()
     }
 
     function collapseStripe( stripeIndex ) {
-        var stripe = columnPositioner.children[stripeIndex];
+        var stripe = getStripeViewItem(stripeIndex);
         stripe.collapse()
     }
 
     function raiseStripeZ( stripeIndex ) {
-        var stripe = columnPositioner.children[stripeIndex];
+        var stripe = getStripeViewItem(tripeIndex);
         stripe.z = 2
     }
 
     function restoreStripeZ( stripeIndex ) {
-        var stripe = columnPositioner.children[stripeIndex];
+        var stripe = getStripeViewItem(stripeIndex);
         stripe.z = 1
     }
 
@@ -135,6 +140,12 @@ Item {
         stripeViews: photoStripesView
         stripesModel: stripesModelObject
         z : 4
+    }
+
+    FlickableSynchronizer {
+        id: synchronizer
+        flickables: columnPositioner.children
+        mainFlickable: null
     }
 
     Item {
@@ -177,7 +188,7 @@ Item {
         target: mainView
         property: "contentY"
         duration: 500
-        easing.type: Easing.InOutQuad
+		easing.type: Easing.OutQuad
     }
 
     Connections {
@@ -222,6 +233,7 @@ Item {
                 console.log( "Running main view")
                 mainView.visible = true
                 stripesRepeater.model = stripesModelObject.stripesModels
+                synchronizer.mainFlickable = getStripeViewItem(0)
             }
 
             DSM.SignalTransition {
@@ -230,6 +242,77 @@ Item {
             }
         }
     }
+
+	Rectangle {
+		parent: debugArea
+		x: 0
+		y: 0
+		width: childrenRect.width
+		height: childrenRect.height
+		id: dbgView
+		Column {
+			Repeater {
+				model: columnPositioner.children
+				delegate : Rectangle {
+					property var targetFlickable : modelData
+					property bool isFlickable : ("stripeContentX" in targetFlickable)
+					width: isFlickable ? childrenRect.width : 0
+					height: isFlickable ? childrenRect.height : 0
+					visible: isFlickable
+					Grid {
+						columns: 2
+						spacing: 2
+						horizontalItemAlignment: Grid.AlignLeft
+						Text {
+							text: "Flickable: "
+						}
+						Text {
+							text: index
+						}
+
+						Text {
+							text : "origin: "
+						}
+						Text {
+							text : targetFlickable.stripeOriginX.toPrecision(3)
+						}
+
+						Text {
+							text : "width: "
+						}
+						Text {
+							text : targetFlickable.stripeContentWidth.toPrecision(3)
+						}
+
+						Text {
+							text : "Position: "
+						}
+						Text {
+							text : targetFlickable.stripeContentX.toPrecision(3)
+						}
+						Text {
+							text : "Vis. x: "
+						}
+						Text {
+							text : targetFlickable.stripeVisibleArea.xPosition.toPrecision(3)
+						}
+						Text {
+							text : "Vis. width: "
+						}
+						Text {
+							text : targetFlickable.stripeVisibleArea.widthRatio.toPrecision(3)
+						}
+						Text {
+							text : "===="
+						}
+						Text {
+							text : "===="
+						}
+					}
+				}
+			}
+		}
+	}
 
     /*
     onSourcePhotoModelChanged: {

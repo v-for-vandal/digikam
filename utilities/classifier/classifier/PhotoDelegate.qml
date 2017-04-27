@@ -40,13 +40,16 @@ Rectangle { // TODO: Make Item before deploying
             d.updateHighlight(cursorObject)
         }
     }
+    function loadPhoto() {
+        d.loadPhoto(d.photoID)
+    }
 
     Component.onCompleted: {
         // Load photo onto self
-		//d.loadPhoto(model.photoID);
         d.photoID = model.photoID;
+        loadPhoto();
         d.updateHighlight(cursorObject);
-        //console.log( "Photo delegate is created: ", model.photoID)
+        console.log( "Photo delegate is created: ", model.photoID)
     }
 
     Component.onDestruction: {

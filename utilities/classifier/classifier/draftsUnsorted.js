@@ -217,3 +217,30 @@ function nonAnimatedMovement(item, newParent) {
 
 function initiateAnimatedMovement(item, newParent) {}
 }
+
+// This binding binds d.syncPosition back to flickables stripeContentX
+// Flickable will only change position if new value is outside of current quant.
+/*
+Binding {
+when: false // shouldBeActive && !bindingLock
+target : targetFlickable
+property : "stripeContentX"
+//delayed : true
+value: {
+if( getQuantifiedPosition() !== d.syncPosition ) {
+return ( ( d.syncPosition / 100.0 * (1 - targetFlickable.stripeVisibleArea.widthRatio) )
+* targetFlickable.stripeWidth + targetFlickable.stripeOriginX )
+} else {
+return targetFlickable.stripeOriginX; // Don't change
+}
+}
+
+Component.onCompleted: {
+console.log( "FS: This flickable index ", index)
+console.log( "FS: This flickable: ", flickables[index])
+console.log("FS: Contains 'stripeContentX':", ("stripeContentX" in flickables[index]))
+//console.log( "FS: Main flickable: ", mainFlickable)
+console.log( "FS: Is active: ", shouldBeActive )
+}
+
+}*/
