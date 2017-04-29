@@ -12,12 +12,7 @@ Item {
     property alias stripeContentX : stripeView.stripeContentX
     readonly property alias stripeContentWidth : stripeView.stripeContentWidth
     readonly property alias stripeVisibleArea : stripeView.stripeVisibleArea
-
-    NumberAnimation {
-        id: heightAnimation
-        duration: 500
-        easing.type: Easing.InOutQuad
-    }
+	readonly property alias expanded : d.expanded
 
     Rectangle {
         id: rootView
@@ -35,10 +30,19 @@ Item {
 
 
             Behavior on height {
+				SequentialAnimation {
+					ScriptAction {
+						script: { console.log("topMargin: behavior animation started") }
+					}
+
                 NumberAnimation {
                     duration: 500
                     easing.type: Easing.InOutQuad
-                }
+				}
+					ScriptAction {
+						script: { console.log("topMargin: behavior animation finished") }
+					}
+				}
             }
 
         }
@@ -60,9 +64,19 @@ Item {
             height: 0
 
             Behavior on height {
-                NumberAnimation {
-                    duration: 500
-                    easing.type: Easing.InOutQuad
+				SequentialAnimation {
+					ScriptAction {
+						script: { console.log("bottomMargin: behavior animation started") }
+					}
+
+				NumberAnimation {
+					id: bottomBehaviour
+					duration: 500
+					easing.type: Easing.InOutQuad
+				}
+					ScriptAction {
+						script: { console.log("bottomMargin: behavior animation finished") }
+					}
                 }
             }
         }
@@ -76,12 +90,13 @@ Item {
             color: "black"
         }
 
+		/*
         Behavior on height {
             NumberAnimation {
                 duration: 500
                 easing.type: Easing.InOutQuad
             }
-        }
+		}*/
 
         SequentialAnimation {
             id: expandAnimation
@@ -99,9 +114,10 @@ Item {
 
             // Pause for debugging
 
+			/*
             PauseAnimation {
                 duration: 500 // TODO: REMOVE
-            }
+			}*/
             ScriptAction {
                 script: console.log( "rootView parent is", rootView.parent.objectName) // TODO: REMOVE
             }
@@ -113,31 +129,44 @@ Item {
                     property: "height"
                     to: photoStripesView.viewAreaItem.height
                     easing.type: Easing.InOutQuad
+					duration: d.expandCollapseDuration
                 }
                 PropertyAnimation {
                     target: rootView
                     property: "y"
                     to: 0
                     easing.type: Easing.InOutQuad
-                }
+					duration: d.expandCollapseDuration
+				}
                 PropertyAnimation {
                     target: rootView
                     property: "width"
                     to: photoStripesView.viewAreaItem.width
                     easing.type: Easing.InOutQuad
-                }
+					duration: d.expandCollapseDuration
+				}
                 PropertyAnimation {
                     target: rootView
                     property: "x"
                     to: 0
                     easing.type: Easing.InOutQuad
-                }
+					duration: d.expandCollapseDuration
+				}
             }
 
             // Restore anchors
             ScriptAction  {
                script: {rootView.anchors.fill = rootView.parent}
             }
+			// Move view to "expanded" state
+			/*
+			ScriptAction {
+				script: { rootView.state = "expanded" }
+			}*/
+			ScriptAction {
+				script: { console.log("Expanding animation finished"); }
+			}
+
 
             /*
             PropertyAction {
@@ -168,14 +197,16 @@ Item {
                     property: "height"
                     to: root.height
                     easing.type: Easing.InOutQuad
-                }
+					duration: d.expandCollapseDuration
+				}
                 PropertyAnimation {
                     target: rootView
                     property: "y"
                     // 0 in root cord/system  to photoStripesView coord/system
                     to: root.mapToItem( rootView.parent, 0, 0).y
                     easing.type: Easing.InOutQuad
-                }
+					duration: d.expandCollapseDuration
+				}
             }
 
             // change parent
@@ -184,9 +215,10 @@ Item {
                 newParent: root
             }
 
+			/*
             PauseAnimation {
                 duration: 500 // TODO: REMOVE, obviously
-            }
+			}*/
 
             // Now restore anchors. It will also fix the situation when during first
             // parallel animation for coords user flicked main ViewSection
@@ -211,6 +243,16 @@ Item {
             ScriptAction  {
                script: {rootView.anchors.fill = rootView.parent}
             }
+
+			ScriptAction {
+				script: { console.log("Collapsing animation finished"); }
+			}
+			// Move view to "normal" state
+			/*
+			ScriptAction {
+				script: { rootView.state = "normal" }
+			}*/
+
             /*
             PropertyAction {
                 target: rootView
@@ -220,8 +262,6 @@ Item {
 
 
         }
-
-
 
         /*ParentAnimation {
             id: reparentingAnimation
@@ -240,6 +280,7 @@ Item {
         states : [
             State {
                 name: "expanded"
+				when: d.expanded
                 PropertyChanges {
                     target: topMargin
                     height : d.expandedMarginHeight
@@ -251,6 +292,7 @@ Item {
             },
             State {
                 name: "normal"
+				when: !d.expanded && stripeModel.count > 0
                 PropertyChanges {
                     target: topMargin
                     height : 0
@@ -261,8 +303,9 @@ Item {
                 }
             },
             State {
-                name: "empty" // Stripe has now photo
-                PropertyChanges {
+				name: "empty" // Stripe has no photos
+				when: !d.expanded && stripeModel.count === 0
+				PropertyChanges {
                     target: bottomMargin
                     height : d.expandedMarginHeight
                 }
@@ -302,7 +345,8 @@ Item {
             id: inactive
             onEntered: {
                 greyOut.visible = true;
-                rootView.state = "normal";
+				//rootView.state = "normal";
+				d.expanded = false
                 console.log( "Stripe ", model.index, " entered inactive state" );
             }
 
@@ -332,6 +376,7 @@ Item {
                     //rootView.anchors.fill = undefined
                     collapseAnimation.stop()
                     expandAnimation.start();
+					d.expanded = true
                     //rootView.state = "expanded"
                     //reparentingAnimation.stop()
                     //reparentingAnimation.newParent = photoStripesView.viewAreaItem
@@ -353,6 +398,7 @@ Item {
                     //rootView.anchors.fill = undefined
                     expandAnimation.stop();
                     collapseAnimation.start();
+					d.expanded = false
                     //rootView.state = "normal"
                     //reparentingAnimation.stop();
                     //reparentingAnimation.newParent = root
@@ -376,7 +422,7 @@ Item {
 
                 onEntered : {
                     console.log( "Stripe ", model.index, " entered normal state" );
-                    rootView.state = "normal"
+					//rootView.state = "normal"
                     //d.hideMargins()
                 }
 
@@ -405,6 +451,12 @@ Item {
 
     QtObject {
         id: d
+
+		// Is view expanded
+		property bool expanded : false
+
+		// Duration of expand/collapse animation
+		property int expandCollapseDuration : 500
 
         // Margins in expanded mode
         readonly property int expandedMarginHeight : Math.max( 10, Math.floor(rootView.height / 5) )

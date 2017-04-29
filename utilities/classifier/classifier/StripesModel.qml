@@ -65,14 +65,17 @@ Item {
     // undefined if photo with such ID do not exist
     function photoIndexByPhotoID(targetPhotoID) {
         if (targetPhotoID < 0
-                || targetPhotoID >= stripesModels.sourcePhotoModel.count) {
+				|| targetPhotoID >= sourcePhotoModel.count) {
+			console.error("PhotoID ", targetPhotoID, " is outside of range")
             return undefined
         }
 
-        var photo = d.stripesModels.sourcePhotoModel.get(targetPhotoID)
+		var photo = sourcePhotoModel.get(targetPhotoID)
         var level = photo.level
+		console.log( "SM: level is ", level)
         var stripeIndex = findStripeIndexForLevel(level)
         var photoIndexInStripe = findPhotoIndexInStripeByPhotoID(stripeIndex, targetPhotoID)
+		console.log("Stripe index is ", stripeIndex, " index in stripe is ", photoIndexInStripe)
 
         return Qt.point(photoIndexInStripe, stripeIndex)
     }
@@ -157,12 +160,15 @@ Item {
     // Return's true if movement was performed, false otherwise (whether it is by error in code, incorrect arguments,
     // or valid situation, like inability to create new level or photo being in newLevel already)
     function movePhotoByIndexToLevel( photoIndex, newLevel, autoCreateLevel ) {
-		// console.log( "Move photo ", photoIndex, " to new level ", newLevel)
+		//console.log( "Move photo (", photoIndex.x, ",", photoIndex.y, ") to new level ", newLevel)
+		console.assert( photoIndex.x !== undefined && photoIndex.y !== undefined,
+					   "photoIndex given is not an index. It must be QPoint object. Value: ", photoIndex)
         if( autoCreateLevel === undefined ) {
             autoCreateLevel = false;
         }
 
         if( newLevel < 0 ) {
+			console.error( "Level can't be negative. Given value is ", newLevel)
             return false;
         }
 
@@ -170,24 +176,27 @@ Item {
         var stripe = getStripe(stripeIndex);
         if( stripe === undefined ) {
             // stripe index out of range
+			console.error("photoIndex - stripe index ", stripeIndex, " is out of range")
             return false;
         }
 
         // If newLevel is equal to current level, then do nothing
         if( stripe.level === newLevel ) {
+			console.log( "SM: Same level")
             return false;
         }
 
         var photoIndexInStripe = photoIndex.x
         if( photoIndexInStripe < 0 || photoIndexInStripe >= stripe.count) {
             // photo index in current stripe is out of range
+			console.error( "photoIndex - index in stripe ", photoIndexInStripe, " is out of range")
             return false;
         }
 
         var photoID = stripe.get(photoIndexInStripe).photoID;
 
         var targetStripeIndex = findStripeIndexForLevel(newLevel)
-		//console.log( "Stripe lookup result: ", targetStripeIndex)
+		console.log( "SM: Stripe lookup result: ", targetStripeIndex)
         if( targetStripeIndex === -1 || targetStripeIndex === undefined ) {
 			//console.log( "No stirpe for level ", newLevel)
             if( autoCreateLevel ) {

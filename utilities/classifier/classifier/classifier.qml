@@ -1,6 +1,7 @@
 import QtQuick 2.6
 import QtQuick.Window 2.2
 import QtQuick.Layouts 1.3
+import QtQuick.Controls 2.1
 
 Window {
     id: root
@@ -36,7 +37,7 @@ Window {
             photoStripesView.cursorObject.currentPhotoID = photoStripesView.cursorObject.photoInLevelDownByPhotoID();
             event.accepted = true;
         }
-        Keys.onEnterPressed: {
+		Keys.onReturnPressed: {
             console.log("Enter pressed");
             photoStripesView.expandStripe(photoStripesView.cursorObject.currentPhotoIndex.y);
             event.accepted = true;
@@ -47,10 +48,21 @@ Window {
             event.accepted = true;
         }
         Keys.onDigit8Pressed: {
-			photoStripesView.visualControlObject.moveCurrentPhotoUpLevel(true);
+			console.log("Eight pressed")
+			if( visualPhotoMoveControl.checked) {
+				photoStripesView.visualControlObject.visualMoveCurrentPhotoUpLevel(true);
+			} else {
+				console.log("Simple move")
+				photoStripesView.visualControlObject.moveCurrentPhotoUpLevel(true);
+			}
         }
         Keys.onDigit2Pressed: {
-			photoStripesView.visualControlObject.moveCurrentPhotoDownLevel(true);
+			if( visualPhotoMoveControl.checked) {
+				photoStripesView.visualControlObject.visualMoveCurrentPhotoDownLevel(true);
+			} else {
+				console.log("Simple move")
+				photoStripesView.visualControlObject.moveCurrentPhotoDownLevel(true);
+			}
         }
     }
 
@@ -109,6 +121,27 @@ Window {
 				border.width: 2
 				id: stripesDebugInfo
 				width: childrenRect.width
+				height: childrenRect.height
+			}
+			Rectangle {
+				anchors.top: stripesDebugInfo.bottom
+				width: childrenRect.width
+				id: photoMovementDebugControl
+				border.color: "black"
+				border.width: 2
+				Column {
+					width: childrenRect.width
+					height: childrenRect.height
+					RadioButton {
+						id: visualPhotoMoveControl
+						text: "Visual move"
+					}
+					RadioButton {
+						id: simplePhotoMoveControl
+						checked: true
+						text: "Simple move"
+					}
+				}
 			}
 
     }

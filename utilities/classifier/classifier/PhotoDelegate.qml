@@ -1,36 +1,152 @@
 import QtQuick 2.0
 
 Rectangle { // TODO: Make Item before deploying
-    // Caution - this property won't be updated if data inside(!) model changed.
-    // Do not query photoItem for user-changable properties, such as 'level'
+	id: wrapper
+	// Caution - this property is a dict and it won't be updated if data inside(!) model changed.
+	// Do not bind/query photoSource for user-changable properties, such as 'level'
     readonly property var photoSource: stripeModel.sourcePhotoModel.get(
-                                         model.photoID)
-    id: wrapper
+										 model.photoID)
+	// This property is true when PhotoDelegate needs to be visible above everything else - for
+	// example when drag operation is in progress
+	readonly property alias needsVisibility : d.needVisibility;
+
     // Dimensions must be the same as RawPhotoView, otherwise animations suffers
-    width: photoSource.width
+	width: ListView.view.height / photoSource.height * photoSource.width
     height: ListView.view.height
     border.color: "pink"
     border.width: 2
-    //opacity: 0.7
-    /*
-                RawPhotoView {
-                    anchors.centerIn: parent
-                    photoID: model.photoID
-                }*/
+
     Item {
-        anchors.fill: parent
+		// These values are 'default' state of object. Object must never be in default state,
+		// so we use these values as indicator of an error
+		width: 200
+		height: 200
+
         id: photoPlaceHolder
+		Drag.active: mouseHandler.drag.active
+		Drag.dragType: Drag.Internal
+
+		/*
+		Behavior on y {
+			NumberAnimation {
+				duration: 300
+				easing.type: Easing.OutQuad
+			}
+		}*/
+
+		Drag.onDragStarted: {
+			console.log("PD: Drag started")
+		}
+		Drag.onDragFinished: {
+			console.log("PD: On drag finished")
+		}
+		Drag.onActiveChanged: {
+			console.log("PD: drag active changed")
+		}
+
+		Drag.onHotSpotChanged: {
+			console.log("PD: drag hot point:", Drag.hotSpot)
+		}
+
+		states : [
+			State {
+				name : "normal"
+				when: !mouseHandler.drag.active
+				ParentChange {
+					target: photoPlaceHolder;
+					parent: wrapper
+					/*
+					Component.onCompleted: {
+						x = photoPlaceHolder.mapToItem(visualControlObject, photoPlaceHolder.x, photoPlaceHolder.y).x
+						y = photoPlaceHolder.mapToItem(visualControlObject, photoPlaceHolder.x, photoPlaceHolder.y).y
+
+					}*/
+				}
+				AnchorChanges {
+					target: photoPlaceHolder;
+					anchors.verticalCenter: undefined;
+					anchors.horizontalCenter: undefined;
+					anchors.top: wrapper.top;
+					anchors.bottom: wrapper.bottom
+					anchors.left: wrapper.left
+					anchors.right: wrapper.right
+				}
+			},
+
+			State {
+				name: "inDrag"
+				when: mouseHandler.drag.active
+				AnchorChanges {
+					target: photoPlaceHolder;
+					anchors.verticalCenter: undefined;
+					anchors.horizontalCenter: undefined;
+					anchors.top: undefined;
+					anchors.bottom: undefined
+					anchors.left: undefined
+					anchors.right: undefined
+				}
+				ParentChange {
+					target: photoPlaceHolder;
+					parent: photoStripeView.visualControlObject
+					/*
+					x: wrapper.mapToItem(visualControlObject, 0, 0).x
+					y: wrapper.mapToItem(visualControlObject, 0, 0).y
+					*/
+				}
+			}
+		]
+
+		transitions: [
+			Transition {
+				from: "inDrag"
+				to: "*"
+				// It is imperative for reparenting to finish before anchor's are restored
+				// and animated.
+				SequentialAnimation {
+					ParentAnimation {}
+					AnchorAnimation {
+						easing.type: Easing.OutQuad
+						duration: 350
+					}
+				}
+			}
+
+		]
     }
 
-    MouseArea {
+	MouseArea {
+		id: mouseHandler
         anchors.fill: parent
-        drag.target: wrapper
+		drag.target: photoPlaceHolder
         drag.axis: Drag.YAxis
         onClicked: {
             console.log( "Clicked on photo: ", model.photoID);
             console.log( "Global coords: ", wrapper.mapToItem(photoStripeView.visualControlObject, 0,0) )
             cursorObject.currentPhotoID = model.photoID;
         }
+		/*
+		onMouseYChanged: {
+			console.log("PD: MouseY ", mouseY)
+		}*/
+
+		/*
+		onPressed: photoPlaceHolder.grabToImage(function(result) {
+						  photoPlaceHolder.Drag.imageSource = result.url
+					  })*/
+		onReleased: {
+			if( drag.active) {
+				var dropSuccessfull = false;
+				if( drag.target.Drag.target !== null && ("dropLevel" in drag.target.Drag.target) ) {
+					// It must be stripe. No way to check for it beforehand
+					var targetLevel = drag.target.Drag.target.dropLevel
+					// It's possible to drop onto self.
+					if( targetLevel !== stripeModel.level ) {
+						console.log("PD: Drag&Drop - moving photo to level ", targetLevel)
+						dropSuccessfull = photoStripeView.visualControlObject.movePhotoToLevel(model.photoID, targetLevel)
+					}
+				}
+			}
+		}
     }
 
     Connections {
@@ -58,27 +174,6 @@ Rectangle { // TODO: Make Item before deploying
 		//d.releasePhoto(d.photoID);
     }
 
-    ParallelAnimation {
-        id: photoMovementAnimation
-
-        NumberAnimation {
-            id: xMovement
-            properties: "x"
-            to: 0 // We always move photo to 0 coordinate of placeholder
-            duration: 3000
-        }
-        NumberAnimation {
-            id: yMovement
-            properties: "y"
-            to: 0 // We always move photo to 0 coordinate of placeholder
-            duration: 3000
-        }
-
-        onStopped: {
-            d.finishLoadingPhoto();
-        }
-
-    }
 
     QtObject {
         id: d
@@ -90,6 +185,8 @@ Rectangle { // TODO: Make Item before deploying
         property var photoItem;
         // Our id
         property int photoID;
+		// True if we need to be visible above everyone else. For example during drag operation
+		property bool needVisibility
 
         function highlightSelf(cursor) {
             if( cursor === null || cursor === undefined

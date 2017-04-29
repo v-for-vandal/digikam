@@ -25,20 +25,27 @@ Item {
 	// Functions in this section provide non-animated movement between stripes.
 
 	// Moves given photo to new level.
-	// preserveCursorInLine - if photoIndex is current photo for cursor, then cursor will switch to next
+	// photoIndexOrId - if PhotoID is givel, it will be automatically resolved to photoIndex
+	// preserveCursorInLine - if photoIndexOrID is current photo for cursor, then cursor will switch to next
 	//						  photo in stripe. If this is last photo, then to prev one. If there are no more
 	//						  photos in stripe, then become -1 (a.k.a unset, a.k.a no current photo)
 	// Function returns true if movement occured, false if did not - whether it is because of some erro
 	// or by design. E.g. when one' cant create any more levels, or photo already at desired level
-	function movePhotoToLevel(photoIndex, newLevel, preserveCursorInLine) {
+	function movePhotoToLevel(photoIndexOrID, newLevel, preserveCursorInLine) {
+		var photoIndex = undefined
+		if( typeof(photoIndexOrID) === "number") {
+			photoIndex = stripesModel.photoIndexByPhotoID(photoIndexOrID)
+		} else {
+			photoIndex = photoIndexOrID
+		}
 
 		var newCursorPhotoID = undefined
 		if (preserveCursorInLine && cursor.currentPhotoIndex === photoIndex) {
 			newCursorPhotoID = cursor.findPreservationPhotoIDInLevel()
 		}
 
-		var success = stripesModelObject.movePhotoByIndexToLevel(
-					cursor.currentPhotoIndex, newLevel, true)
+		var success = stripesModel.movePhotoByIndexToLevel(
+					photoIndex, newLevel, true)
 		if (success) {
 			// Changing position
 			if (newCursorPhotoID !== undefined) {
@@ -47,9 +54,20 @@ Item {
 				// forcefull updating cursor to pick up changes in 'level' property of current photo
 				cursor.forceUpdate()
 			}
+			// Making sure current photo under cursor is visible
 		}
 
 		return success;
+	}
+	function moveCurrentPhotoUpLevel(preserveCursorInStripe) {
+		movePhotoToLevel(cursor.currentPhotoIndex,
+							   cursor.currentLevel + 1,
+							   preserveCursorInStripe )
+	}
+	function moveCurrentPhotoDownLevel(preserveCursorInLine) {
+		movePhotoToLevel(cursor.currentPhotoIndex,
+							   cursor.currentLevel - 1,
+							   preserveCursorInLine )
 	}
 
 	// ==== Visual movements ===
@@ -60,8 +78,17 @@ Item {
 	// preserveCursorInStripe - cursor stays within stripe. If there is no more photos in
 	//   stripe, then cursor becomes -1
 	// animate - make movement animated. If animate == false, then call is equal to movePhotoToLevel
-	function visualMovePhotoToLevel(photoIndex, newLevel, preserveCursorInLine, animate) {
-		var photoID = stripesModelObject.getPhotoID(photoIndex)
+	function visualMovePhotoToLevel(photoIndexOrID, newLevel, preserveCursorInLine, animate) {
+		var photoID = -1;
+		var photoIndex = -1;
+		// Resolving photoIndexOrID into 2 variables - photoID and photoIndex
+		if( typeof(photoIndexOrID) === "number" ) {
+			photoID = photoIndexOrID;
+			photoIndex = stripesModel.photoIndexByPhotoID(photoID)
+		} else {
+			photoIndex = photoIndexOrID
+			stripesModel.getPhotoID(photoIndex)
+		}
 		if (photoID === -1) {
 			console.error("No photo matching this photoIndex ", photoIndex)
 			throw false
@@ -134,6 +161,7 @@ Item {
 				} else {
 					refCount++
 				}*/ // TODO: REMOVE
+				d.animatedMovementRegistry[photoID] = 1
 				// Restore preserved item
 				photoObject.item = photoItemPreservation
 				d.prepareForAnimation(photoObject)
@@ -232,7 +260,14 @@ Item {
 			d.photoItemsCache[photoID] = photoObject
 		}
 
-		d.initiateMovement(photoObject, newParent)
+		// If there is a registered animated movement request, then try to animate
+		if( d.animatedMovementRegistry[photoID] > 0) {
+			d.initiateAnimatedMovement(photoObject, newParent)
+		} else {
+			// transfer immediately
+			d.nonAnimatedMovement(photoObject.item, newParent)
+		}
+
 		return photoObject
 	}
 
@@ -287,7 +322,8 @@ Item {
 		// it is a pair PhotoID -> refCounter. refCounter is needed to track situation
 		// when movement of the photo is interrupted by another movement of the same photo.
 		// TODO: Do we need this variable ?
-		property var movementRegistry
+		// TODO: Do we really need to count references ?
+		property var animatedMovementRegistry
 
 		property var pendingAnimations
 		property var pendingItems
@@ -313,7 +349,7 @@ Item {
 			photoItemsCache = {
 
 			} // TODO: REMOVE ?
-			movementRegistry = {
+			animatedMovementRegistry = {
 
 			}
 			pendingAnimations = []
@@ -334,10 +370,10 @@ Item {
 			pendingTimer.restart();
 		}
 
-		// Function will initiate movement of photo item to specified newParent. If there is
-		// registered stripe-to-stripe movement in d.movementRegistry, then it will be animated.
-		// If there is not, then it is immediate
-		function initiateMovement(photoObject, newParent) {
+		// Function will initiate movement of photo item to specified newParent.
+		// It will fallback to non-animated movement under certain conditions
+		function initiateAnimatedMovement(photoObject, newParent) {
+
 			if (photoObject.movementAnimation !== undefined
 					&& photoObject.movementAnimation !== null) {
 				// Interrupt current animation. We do not complete it, because it is unclear whether there currently
@@ -431,8 +467,8 @@ Item {
 			item.parent = newParent
 			item.x = 0
 			item.y = 0
+			item.anchors.fill = item.parent
 		}
 
-		function initiateAnimatedMovement(item, newParent) {}
 	}
 }

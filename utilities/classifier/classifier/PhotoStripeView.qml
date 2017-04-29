@@ -13,10 +13,15 @@ Item {
     readonly property alias stripeContentWidth : stripeView.contentWidth
     readonly property alias stripeVisibleArea : stripeView.visibleArea
 
-    Rectangle {
+	Rectangle { // TODO: This rectangle is for debug purposes only
         anchors.fill: parent
         border.color: "black"
-        border.width: 5
+		border.width: 5
+
+		DropArea {
+			property var dropLevel : stripeModel.level
+			anchors.fill: parent
+		}
 
         ListView {
             id: stripeView

@@ -20,10 +20,10 @@ Item {
 	}
 
 	onMainFlickableChanged: {
-		console.log("FS: New main flickable: ", mainFlickable)
+		//console.log("FS: New main flickable: ", mainFlickable)
 	}
 	onFlickablesChanged: {
-		console.log("FS: Flickables changed. Object is ", flickables)
+		//console.log("FS: Flickables changed. Object is ", flickables)
 	}
 
 	/*
@@ -54,9 +54,10 @@ Item {
 			property var bindingLock: false
 
 			function getQuantifiedPosition() {
+				console.assert("stripeContentX" in targetFlickable, "Error - movement in unsupported type, index: ", index)
 				var visWidth = targetFlickable.stripeVisibleArea.widthRatio;
-				console.log("FS: getQuantPos: visWidth: ", visWidth, " xPos ",
-							targetFlickable.stripeVisibleArea.xPosition)
+				/*console.log("FS: getQuantPos: visWidth: ", visWidth.toPrecision(3), " xPos ",
+							targetFlickable.stripeVisibleArea.xPosition.toPrecision(3))*/
 				console.assert( !isNaN(targetFlickable.stripeVisibleArea.widthRatio),
 							   "FS: getQuantPos: visWidth is NaN")
 				if( visWidth >= 0.99 ) {
@@ -99,12 +100,14 @@ Item {
 					// user flicks -> Flickable moves ContentX with it's own animation ->
 					// d.syncPosition changes -> updateFlickablePosition is called ->
 					// updateFlickablePosition launches it's own animation moving Flickable.
-					if (!bindingLock) {
+					if (!bindingLock && shouldBeActive) {
 						updateFlickablePosition()
 					}
 				}
 			}
 
+			// Running animation is blocking flickable user interaction until completition. So
+			// we don't have to worry about that
 			NumberAnimation {
 				id: artificialFlickAnimation
 				target: targetFlickable
@@ -114,6 +117,7 @@ Item {
 			}
 
 			Connections {
+				enabled: shouldBeActive
 				target: artificialFlickAnimation
 
 				onStopped : {
@@ -144,8 +148,8 @@ Item {
 				if( artificialFlickAnimation.running ) {
 					return;
 				}
-				console.log( "FS: Flickable ", index, " contentX: ", targetFlickable.stripeContentX,
-						" originX: ", targetFlickable.stripeOriginX, "width: ", targetFlickable.stripeContentWidth)
+				/*console.log( "FS: Flickable ", index, " contentX: ", targetFlickable.stripeContentX.toPrecision(3),
+						" originX: ", targetFlickable.stripeOriginX.toPrecision(3), "width: ", targetFlickable.stripeContentWidth.toPrecision(3))*/
 
 				// Global lock for signals
 				d.updateLock = true
@@ -186,17 +190,17 @@ Item {
 							"target q/p: ", getQuantifiedPosition(),
 							" sync/p ", d.syncPosition)*/
 				if (getQuantifiedPosition() !== d.syncPosition ) {
-					console.log("FS: Flickable ", index, " updating position")
+					//console.log("FS: Flickable ", index, " updating position")
 					/*
 					console.log("FS: New content position: ",
 								newContentPosition)*/
 					var newContentPosition = getContentPositionFromSynced()
 					if( animateMovementToPosition(newContentPosition)) {
-						console.log("FS: Flickable ", index, " slave movement from ", artificialFlickAnimation.from,
-								" to ", artificialFlickAnimation.to, " duration ", artificialFlickAnimation.duration)
+						/*console.log("FS: Flickable ", index, " slave movement from ", artificialFlickAnimation.from,
+								" to ", artificialFlickAnimation.to, " duration ", artificialFlickAnimation.duration)*/
 					}
 				} else {
-					console.log( "FS: Flickable ", index, " is within current quant")
+					//console.log( "FS: Flickable ", index, " is within current quant")
 
 					//return targetFlickable.stripeOriginX; // Don't change
 				}
@@ -206,8 +210,8 @@ Item {
 			function recalibrateFlickablePosition() {
 				var newContentPosition = getContentPositionFromSynced()
 				if( animateMovementToPosition(newContentPosition)) {
-					console.log("FS: Flickable ", index, " slave movement(recalibration) from ", artificialFlickAnimation.from,
-							" to ", artificialFlickAnimation.to, " duration ", artificialFlickAnimation.duration)
+					/*console.log("FS: Flickable ", index, " slave movement(recalibration) from ", artificialFlickAnimation.from,
+							" to ", artificialFlickAnimation.to, " duration ", artificialFlickAnimation.duration)*/
 				}
 
 			}
@@ -250,7 +254,7 @@ console.log("FS: Contains stripeVisibleAreaChanged signal")
 		property bool updateLock: false
 
 		onSyncPositionChanged: {
-			console.log("FS: sync position is ", syncPosition)
+			//console.log("FS: sync position is ", syncPosition)
 		}
 	}
 }

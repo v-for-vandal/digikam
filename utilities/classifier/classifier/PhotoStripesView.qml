@@ -106,7 +106,7 @@ Item {
     }
 
     function raiseStripeZ( stripeIndex ) {
-        var stripe = getStripeViewItem(tripeIndex);
+		var stripe = getStripeViewItem(stripeIndex);
         stripe.z = 2
     }
 
@@ -228,7 +228,9 @@ Item {
         }
 
         DSM.State {
-            id: sRunning
+			id: sRunning
+			initialState: sOverview
+
             onEntered : {
                 console.log( "Running main view")
                 mainView.visible = true
@@ -240,7 +242,29 @@ Item {
                 targetState: sInit
                 signal: stripesModelObject.initializationStarted
             }
+
+			// In this state all stripes are visible
+			DSM.State {
+				id: sOverview
+
+				onEntered : {
+					// Close current expanded stripe
+					d.expandedStripe.collapse()
+				}
+			}
+
+			// In this state one stripe is expanded across the screen
+			DSM.State {
+				id: sStripeView
+			}
+
+			// This state is continuation of sStripeView - only one photo
+			// is visible at a time
+			DSM.State {
+				id: sPhotoView
+			}
         }
+
     }
 
 	Rectangle {
